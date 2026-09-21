@@ -1,0 +1,6 @@
+insightface
+onnxruntime
+opencv-python
+flask
+numpy
+albumentations
