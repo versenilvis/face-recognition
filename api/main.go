@@ -91,6 +91,8 @@ func main() {
 	protected.Delete("/lop-hoc/:id", classHandler.Delete)
 
 	// sinh vien
+	protected.Get("/sinh-vien/all", studentHandler.ListAll)
+	protected.Get("/sinh-vien/lookup/:mssv", studentHandler.LookupByMSSV)
 	protected.Get("/lop-hoc/:id/sinh-vien", studentHandler.ListByClass)
 	protected.Post("/lop-hoc/:id/sinh-vien", studentHandler.Create)
 	protected.Delete("/sinh-vien/:id", studentHandler.Delete)

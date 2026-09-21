@@ -19,9 +19,10 @@ CREATE TABLE IF NOT EXISTS lop_hoc (
 
 CREATE TABLE IF NOT EXISTS sinh_vien (
     id         INTEGER PRIMARY KEY AUTOINCREMENT,
-    mssv       TEXT UNIQUE NOT NULL,
+    mssv       TEXT NOT NULL,
     ho_ten     TEXT NOT NULL,
-    lop_hoc_id INTEGER REFERENCES lop_hoc(id)
+    lop_hoc_id INTEGER REFERENCES lop_hoc(id),
+    UNIQUE(mssv, lop_hoc_id)
 );
 
 CREATE TABLE IF NOT EXISTS face_embedding (

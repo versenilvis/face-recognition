@@ -58,19 +58,43 @@ func (h *Handler) Create(c fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "lop hoc khong ton tai"})
 	}
 
-	id, err := h.repo.Create(c.Context(), rq.MSSV, rq.HoTen, lopHocID)
+	id, autoLinked, err := h.repo.Create(c.Context(), rq.MSSV, rq.HoTen, lopHocID)
 	if err != nil {
 		if strings.Contains(err.Error(), "UNIQUE constraint failed") {
-			return c.Status(fiber.StatusConflict).JSON(fiber.Map{"error": "mssv da ton tai"})
+			return c.Status(fiber.StatusConflict).JSON(fiber.Map{"error": "sinh vien da co trong lop nay"})
 		}
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "db error"})
 	}
 
 	return c.Status(fiber.StatusCreated).JSON(fiber.Map{
-		"message":      "create success",
-		"sinh_vien_id": id,
-		"id":           id,
+		"message":          "create success",
+		"sinh_vien_id":     id,
+		"id":               id,
+		"auto_linked_face": autoLinked,
 	})
+}
+
+func (h *Handler) LookupByMSSV(c fiber.Ctx) error {
+	mssv := strings.TrimSpace(c.Params("mssv"))
+	if mssv == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "mssv cannot be empty"})
+	}
+
+	lookup, err := h.repo.LookupByMSSV(c.Context(), mssv)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "db error"})
+	}
+
+	return c.JSON(lookup)
+}
+
+func (h *Handler) ListAll(c fiber.Ctx) error {
+	ds, err := h.repo.ListAllUniqueStudents(c.Context())
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "db error"})
+	}
+
+	return c.JSON(ds)
 }
 
 func (h *Handler) Delete(c fiber.Ctx) error {
