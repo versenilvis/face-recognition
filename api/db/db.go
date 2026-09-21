@@ -6,6 +6,8 @@ import (
 	"context"
 	"database/sql"
 	_ "embed"
+	"os"
+	"path/filepath"
 	"time"
 
 	_ "modernc.org/sqlite"
@@ -27,6 +29,10 @@ PRAGMA busy_timeout = 5000; -- Nếu database đang bị khóa (bận), nó sẽ
 `
 
 func New(ctx context.Context, path string) (*DB, error) {
+	if dir := filepath.Dir(path); dir != "" && dir != "." {
+		_ = os.MkdirAll(dir, 0755)
+	}
+
 	write, err := sql.Open("sqlite", "file:"+path)
 	if err != nil {
 		return nil, err
