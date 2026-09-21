@@ -1,0 +1,15 @@
+root = "."
+tmp_dir = "tmp"
+
+[build]
+    cmd = "go build -o ./tmp/main ./main.go"
+    entrypoint = "./tmp/main"
+    include_ext = ["go", "env"]
+    exclude_dir = ["assets", "tmp", "vendor"]
+    delay = 200
+    send_interrupt = true
+    stop_on_error = true
+
+[log]
+    silent = true
+    main_only = true
