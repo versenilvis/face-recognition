@@ -24,3 +24,6 @@ tidy:
 # run tests
 test:
     @cd api && go test -v ./...
+
+dev:
+    @just api && just infer
