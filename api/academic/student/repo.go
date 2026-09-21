@@ -70,9 +70,22 @@ func (r *Repo) Create(ctx context.Context, mssv, hoTen string, lopID int) (int64
 }
 
 func (r *Repo) Delete(ctx context.Context, id int) (int64, error) {
-	res, err := r.db.Write.ExecContext(ctx, "delete from sinh_vien where id = ?", id)
-	if err != nil {
-		return 0, err
-	}
-	return res.RowsAffected()
+	var affected int64
+	err := r.db.InTransaction(ctx, func(tx *sql.Tx) error {
+		if _, err := tx.ExecContext(ctx, "delete from diem_danh where sinh_vien_id = ?", id); err != nil {
+			return err
+		}
+		if _, err := tx.ExecContext(ctx, "delete from face_embedding where sinh_vien_id = ?", id); err != nil {
+			return err
+		}
+		res, err := tx.ExecContext(ctx, "delete from sinh_vien where id = ?", id)
+		if err != nil {
+			return err
+		}
+		var errRows error
+		affected, errRows = res.RowsAffected()
+		return errRows
+	})
+	return affected, err
 }
+

@@ -40,8 +40,8 @@ CREATE TABLE IF NOT EXISTS buoi_hoc (
 );
 
 CREATE TABLE IF NOT EXISTS diem_danh (
-    buoi_hoc_id  INTEGER REFERENCES buoi_hoc(id),
-    sinh_vien_id INTEGER REFERENCES sinh_vien(id),
+    buoi_hoc_id  INTEGER REFERENCES buoi_hoc(id) ON DELETE CASCADE,
+    sinh_vien_id INTEGER REFERENCES sinh_vien(id) ON DELETE CASCADE,
     thoi_gian    DATETIME DEFAULT CURRENT_TIMESTAMP,
     similarity   REAL,
     phuong_thuc  TEXT DEFAULT 'face',
