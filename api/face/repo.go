@@ -78,6 +78,7 @@ func (r *Repo) DeleteFaceEmbedding(ctx context.Context, svID int) (int64, error)
 	return res.RowsAffected()
 }
 
+// RecordAttendance ghi nhận có mặt vào bảng diem_danh với phương thức face và lưu độ tương đồng
 func (r *Repo) RecordAttendance(ctx context.Context, buoiID, svID int, sim *float64, phuongThuc string) (int64, error) {
 	var res sql.Result
 	var err error
