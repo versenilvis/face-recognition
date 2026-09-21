@@ -4,7 +4,13 @@ services:
             context: ./infer
             dockerfile: Dockerfile
         restart: always
-        # internal network only
+        volumes:
+            - ./infer/models:/root/.insightface
+        logging:
+            driver: "json-file"
+            options:
+                max-size: "10m"
+                max-file: "3"
         networks:
             - app
 
@@ -23,7 +29,11 @@ services:
         volumes:
             - ./data:/data
             - ./api/web:/app/web
-
+        logging:
+            driver: "json-file"
+            options:
+                max-size: "10m"
+                max-file: "3"
         depends_on:
             - infer
         networks:
