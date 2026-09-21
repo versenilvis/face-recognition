@@ -16,7 +16,12 @@ func NewRepo(d *db.DB) *Repo {
 }
 
 func (r *Repo) List(ctx context.Context) ([]MonHoc, error) {
-	rows, err := r.db.Read.QueryContext(ctx, "select id, ma_mon, ten from mon_hoc order by id desc")
+	rows, err := r.db.Read.QueryContext(ctx, `
+		select m.id, m.ma_mon, m.ten,
+		       (select count(*) from lop_hoc l where l.mon_hoc_id = m.id) as total_classes
+		from mon_hoc m
+		order by m.id desc
+	`)
 	if err != nil {
 		return nil, err
 	}
@@ -25,7 +30,7 @@ func (r *Repo) List(ctx context.Context) ([]MonHoc, error) {
 	ds := []MonHoc{}
 	for rows.Next() {
 		var mh MonHoc
-		if err := rows.Scan(&mh.ID, &mh.MaMon, &mh.Ten); err != nil {
+		if err := rows.Scan(&mh.ID, &mh.MaMon, &mh.Ten, &mh.TotalClasses); err != nil {
 			return nil, err
 		}
 		ds = append(ds, mh)

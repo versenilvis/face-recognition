@@ -17,10 +17,14 @@ func NewRepo(d *db.DB) *Repo {
 
 func (r *Repo) ListByLop(ctx context.Context, lopID int) ([]BuoiHoc, error) {
 	rows, err := r.db.Read.QueryContext(ctx, `
-		select id, lop_hoc_id, ngay, bat_dau, ket_thuc, trang_thai
-		from buoi_hoc
-		where lop_hoc_id = ?
-		order by ngay desc, id desc
+		select b.id, b.lop_hoc_id, b.ngay, b.bat_dau, b.ket_thuc, b.trang_thai,
+		       count(distinct dd.sinh_vien_id) as present_count,
+		       (select count(*) from sinh_vien sv where sv.lop_hoc_id = b.lop_hoc_id) as total_students
+		from buoi_hoc b
+		left join diem_danh dd on b.id = dd.buoi_hoc_id
+		where b.lop_hoc_id = ?
+		group by b.id
+		order by b.ngay desc, b.id desc
 	`, lopID)
 	if err != nil {
 		return nil, err
@@ -30,7 +34,7 @@ func (r *Repo) ListByLop(ctx context.Context, lopID int) ([]BuoiHoc, error) {
 	ds := []BuoiHoc{}
 	for rows.Next() {
 		var b BuoiHoc
-		if err := rows.Scan(&b.ID, &b.LopHocID, &b.Ngay, &b.BatDau, &b.KetThuc, &b.TrangThai); err != nil {
+		if err := rows.Scan(&b.ID, &b.LopHocID, &b.Ngay, &b.BatDau, &b.KetThuc, &b.TrangThai, &b.PresentCount, &b.TotalStudents); err != nil {
 			return nil, err
 		}
 		ds = append(ds, b)

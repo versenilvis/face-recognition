@@ -69,6 +69,7 @@ func (h *Handler) Create(c fiber.Ctx) error {
 	return c.Status(fiber.StatusCreated).JSON(fiber.Map{
 		"message":      "create success",
 		"sinh_vien_id": id,
+		"id":           id,
 	})
 }
 

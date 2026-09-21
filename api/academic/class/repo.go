@@ -17,7 +17,10 @@ func NewRepo(d *db.DB) *Repo {
 
 func (r *Repo) List(ctx context.Context) ([]LopHoc, error) {
 	rows, err := r.db.Read.QueryContext(ctx, `
-		select l.id, l.ten, l.mon_hoc_id, m.ten, m.ma_mon, l.giang_vien_id
+		select l.id, l.ten, l.mon_hoc_id, m.ten, m.ma_mon, l.giang_vien_id,
+		       (select count(*) from sinh_vien sv where sv.lop_hoc_id = l.id) as total_students,
+		       (select count(*) from sinh_vien sv join face_embedding fe on sv.id = fe.sinh_vien_id where sv.lop_hoc_id = l.id) as students_with_face,
+		       (select count(*) from buoi_hoc bh where bh.lop_hoc_id = l.id) as total_lessons
 		from lop_hoc l
 		join mon_hoc m on l.mon_hoc_id = m.id
 		order by l.id desc
@@ -30,7 +33,7 @@ func (r *Repo) List(ctx context.Context) ([]LopHoc, error) {
 	ds := []LopHoc{}
 	for rows.Next() {
 		var lh LopHoc
-		if err := rows.Scan(&lh.ID, &lh.Ten, &lh.MonHocID, &lh.TenMon, &lh.MaMon, &lh.GiangVienID); err != nil {
+		if err := rows.Scan(&lh.ID, &lh.Ten, &lh.MonHocID, &lh.TenMon, &lh.MaMon, &lh.GiangVienID, &lh.TotalStudents, &lh.StudentsWithFace, &lh.TotalLessons); err != nil {
 			return nil, err
 		}
 		ds = append(ds, lh)
@@ -41,11 +44,14 @@ func (r *Repo) List(ctx context.Context) ([]LopHoc, error) {
 func (r *Repo) GetByID(ctx context.Context, id int) (*LopHoc, error) {
 	var lh LopHoc
 	err := r.db.Read.QueryRowContext(ctx, `
-		select l.id, l.ten, l.mon_hoc_id, m.ten, m.ma_mon, l.giang_vien_id
+		select l.id, l.ten, l.mon_hoc_id, m.ten, m.ma_mon, l.giang_vien_id,
+		       (select count(*) from sinh_vien sv where sv.lop_hoc_id = l.id) as total_students,
+		       (select count(*) from sinh_vien sv join face_embedding fe on sv.id = fe.sinh_vien_id where sv.lop_hoc_id = l.id) as students_with_face,
+		       (select count(*) from buoi_hoc bh where bh.lop_hoc_id = l.id) as total_lessons
 		from lop_hoc l
 		join mon_hoc m on l.mon_hoc_id = m.id
 		where l.id = ?
-	`, id).Scan(&lh.ID, &lh.Ten, &lh.MonHocID, &lh.TenMon, &lh.MaMon, &lh.GiangVienID)
+	`, id).Scan(&lh.ID, &lh.Ten, &lh.MonHocID, &lh.TenMon, &lh.MaMon, &lh.GiangVienID, &lh.TotalStudents, &lh.StudentsWithFace, &lh.TotalLessons)
 	if err != nil {
 		return nil, err
 	}

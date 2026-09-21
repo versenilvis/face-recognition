@@ -7,5 +7,7 @@ type BuoiHoc struct {
 	Ngay      string  `json:"ngay"`
 	BatDau    *string `json:"bat_dau,omitempty"`
 	KetThuc   *string `json:"ket_thuc,omitempty"`
-	TrangThai string  `json:"trang_thai"`
+	TrangThai     string  `json:"trang_thai"`
+	PresentCount  int     `json:"present_count"`
+	TotalStudents int     `json:"total_students"`
 }

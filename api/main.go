@@ -8,6 +8,7 @@ import (
 	"syscall"
 
 	"github.com/gofiber/fiber/v3"
+	"github.com/gofiber/fiber/v3/middleware/static"
 	"github.com/versenilvis/face-recognition/academic/attendance"
 	"github.com/versenilvis/face-recognition/academic/class"
 	"github.com/versenilvis/face-recognition/academic/lesson"
@@ -66,9 +67,8 @@ func main() {
 	attendanceHandler := attendance.NewHandler(attendanceRepo)
 	faceHandler := face.NewHandler(faceRepo, faceService)
 
-	app.Get("/", func(c fiber.Ctx) error {
-		return c.SendString("Hello")
-	})
+	// web ui
+	app.Use("/", static.New("./web"))
 
 	// public routes
 	app.Post("/login", authHandler.Login)

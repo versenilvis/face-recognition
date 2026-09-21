@@ -93,6 +93,14 @@ func (s *Service) ProcessCheckin(ctx context.Context, buoiHocID int, imgBytes []
 	var matches []CheckinMatch
 	for _, face := range inferResp.Faces {
 		if face.Liveness.Label != "Real" {
+			matches = append(matches, CheckinMatch{
+				SinhVienID: 0,
+				MSSV:       "",
+				HoTen:      "Giả mạo",
+				Similarity: 0,
+				Status:     "fake",
+				BBox:       face.BBox,
+			})
 			continue
 		}
 
@@ -116,11 +124,20 @@ func (s *Service) ProcessCheckin(ctx context.Context, buoiHocID int, imgBytes []
 
 			matches = append(matches, CheckinMatch{
 				SinhVienID: bestMatch.ID,
-				MSSV:        bestMatch.MSSV,
-				HoTen:       bestMatch.HoTen,
-				Similarity:  maxSim,
-				Status:      status,
-				BBox:        face.BBox,
+				MSSV:       bestMatch.MSSV,
+				HoTen:      bestMatch.HoTen,
+				Similarity: maxSim,
+				Status:     status,
+				BBox:       face.BBox,
+			})
+		} else {
+			matches = append(matches, CheckinMatch{
+				SinhVienID: 0,
+				MSSV:       "",
+				HoTen:      "Chưa đăng ký",
+				Similarity: maxSim,
+				Status:     "unknown",
+				BBox:       face.BBox,
 			})
 		}
 	}
