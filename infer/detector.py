@@ -1,10 +1,11 @@
 """
-insightface wrapper — face detection + alignment + embedding extraction
+insightface wrapper: face detection + alignment + embedding extraction
 uses buffalo_s: RetinaFace (detect) + ArcFace (embed)
 """
 
 import cv2
 import numpy as np
+import torch
 from dataclasses import dataclass
 from insightface.app import FaceAnalysis
 from config import INSIGHT_FACE_MODEL, DET_SIZE, DET_THRESH
@@ -24,7 +25,8 @@ def load_model() -> FaceAnalysis:
     global _app
     if _app is None:
         _app = FaceAnalysis(name=INSIGHT_FACE_MODEL)
-        _app.prepare(ctx_id=0, det_size=DET_SIZE, det_thresh=DET_THRESH)
+        ctx = 0 if torch.cuda.is_available() else -1
+        _app.prepare(ctx_id=ctx, det_size=DET_SIZE, det_thresh=DET_THRESH)
     return _app
 
 

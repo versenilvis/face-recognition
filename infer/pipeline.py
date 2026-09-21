@@ -1,5 +1,5 @@
 """
-main inference pipeline — combines detector + liveness into one call.
+main inference pipeline: combines detector + liveness into one call.
 this is what app.py calls per request.
 """
 
@@ -15,7 +15,8 @@ class FaceResult:
     det_score: float
     embedding: list[float]       # 512-dim, normalized
     liveness_label: str          # "Real" | "Fake"
-    liveness_score: float        # 0.0 – 1.0
+    liveness_score: float        # 0.0 - 1.0
+
 
 
 def process_frame(img_bgr: np.ndarray) -> list[FaceResult]:

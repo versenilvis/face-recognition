@@ -1,6 +1,6 @@
 insightface
 onnxruntime
-opencv-python
+opencv-python>=4.8.0,<5.0
 flask
 numpy
 albumentations

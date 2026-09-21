@@ -52,6 +52,7 @@ if __name__ == "__main__":
     print("loading models...")
     load_model()
     _get_models()
-    print("ready — listening on 127.0.0.1:8001")
+    print("ready, listening on 0.0.0.0:8001")
 
-    app.run(host="127.0.0.1", port=8001, debug=False)
+    app.run(host="0.0.0.0", port=8001, debug=False)
+

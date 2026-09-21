@@ -1,5 +1,5 @@
 """
-MiniFASNetV2 wrapper — anti-spoofing liveness detection
+MiniFASNetV2 wrapper: anti-spoofing liveness detection
 depends on cloned repo: Silent-Face-Anti-Spoofing/
 """
 
@@ -7,15 +7,53 @@ import os
 import sys
 import cv2
 import numpy as np
+import torch
 from config import ANTI_SPOOF_DIR, ANTI_SPOOF_MODEL, LIVENESS_THRESH, LIVENESS_MARGIN
+
+# allow older state_dict files in newer pytorch versions
+_orig_torch_load = torch.load
+
+
+def _safe_torch_load(*args, **kwargs):
+    if "weights_only" not in kwargs:
+        kwargs["weights_only"] = False
+    return _orig_torch_load(*args, **kwargs)
+
+
+torch.load = _safe_torch_load
 
 # add repo to path once at import
 if ANTI_SPOOF_DIR not in sys.path:
     sys.path.insert(0, ANTI_SPOOF_DIR)
 
-from src.anti_spoof_predict import AntiSpoofPredict
+from src.anti_spoof_predict import AntiSpoofPredict, Detection
 from src.generate_patches import CropImage
 from src.utility import parse_model_name
+
+# fallback if cv2 lacks caffe
+_orig_det_init = Detection.__init__
+
+
+def _safe_det_init(self):
+    try:
+        _orig_det_init(self)
+    except Exception:
+        self.detector = None
+        self.detector_confidence = 0.6
+
+
+def _safe_get_bbox(self, img):
+    if getattr(self, "detector", None) is None:
+        return [0, 0, 0, 0]
+    try:
+        return Detection.get_bbox(self, img)
+    except Exception:
+        return [0, 0, 0, 0]
+
+
+Detection.__init__ = _safe_det_init
+Detection.get_bbox = _safe_get_bbox
+
 
 _predictor: AntiSpoofPredict | None = None
 _cropper: CropImage | None = None
@@ -24,15 +62,21 @@ _cropper: CropImage | None = None
 def _get_models() -> tuple[AntiSpoofPredict, CropImage]:
     global _predictor, _cropper
     if _predictor is None:
-        _predictor = AntiSpoofPredict(0)
-        _cropper = CropImage()
+        original_dir = os.getcwd()
+        try:
+            os.chdir(ANTI_SPOOF_DIR)
+            _predictor = AntiSpoofPredict(0)
+            _cropper = CropImage()
+        finally:
+            os.chdir(original_dir)
     return _predictor, _cropper
 
 
 def check_liveness(img_bgr: np.ndarray, bbox: list[int]) -> tuple[str, float]:
     """
     run MiniFASNetV2 on the face region (with margin) to detect spoof.
-    returns ("Real" | "Fake", confidence_score 0.0–1.0)
+    returns ("Real" | "Fake", confidence_score 0.0 - 1.0)
+
 
     bbox: [x1, y1, x2, y2] in img_bgr coords
     """
