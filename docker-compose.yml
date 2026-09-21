@@ -22,6 +22,8 @@ services:
             - JWT_SECRET=${JWT_SECRET}
         volumes:
             - ./data:/data
+            - ./api/web:/app/web
+
         depends_on:
             - infer
         networks:
