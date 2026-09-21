@@ -1,5 +1,5 @@
 .env
-data/face_reg.db
+data/
 api/tmp/
 .cache
 api/server
