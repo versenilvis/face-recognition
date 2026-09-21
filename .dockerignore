@@ -1,0 +1,14 @@
+.git
+.github
+.cache
+tmp
+.air
+data.db
+*.log
+*.m3u8
+main
+server
+web
+.vscode
+.agents
+.codex

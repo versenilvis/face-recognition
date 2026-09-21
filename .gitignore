@@ -1,0 +1,10 @@
+.env
+data/face_reg.db
+api/tmp/
+.cache
+api/server
+web/node_modules
+scratch/
+*.log
+main
+.scratch/
