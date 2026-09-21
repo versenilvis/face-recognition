@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	"github.com/versenilvis/face-recognition/infer"
+	"github.com/versenilvis/face-recognition/utils"
 )
 
 var (
@@ -28,7 +29,7 @@ func NewService(r *Repo, ic *infer.Client) *Service {
 	return &Service{
 		repo:        r,
 		inferClient: ic,
-		threshold:   0.45,
+		threshold:   utils.GetEnvAsFloat("SIMILARITY_THRESHOLD", 0.45),
 	}
 }
 
