@@ -74,6 +74,8 @@ func main() {
 	app.Post("/login", authHandler.Login)
 	app.Post("/logout", authHandler.Logout)
 	app.Get("/buoi-hoc/open", lessonHandler.ListOpen)
+	app.Get("/buoi-hoc/:id", lessonHandler.GetByID)
+	app.Get("/buoi-hoc/:id/diem-danh", attendanceHandler.ListByLesson)
 	app.Post("/buoi-hoc/:id/checkin", faceHandler.Checkin)
 
 	// protected routes
@@ -95,11 +97,13 @@ func main() {
 	protected.Get("/sinh-vien/lookup/:mssv", studentHandler.LookupByMSSV)
 	protected.Get("/lop-hoc/:id/sinh-vien", studentHandler.ListByClass)
 	protected.Post("/lop-hoc/:id/sinh-vien", studentHandler.Create)
+	protected.Post("/lop-hoc/:id/sinh-vien/bulk", studentHandler.BulkCreate)
 	protected.Delete("/sinh-vien/:id", studentHandler.Delete)
 
 	// buoi hoc
 	protected.Get("/lop-hoc/:id/buoi-hoc", lessonHandler.ListByClass)
 	protected.Post("/lop-hoc/:id/buoi-hoc", lessonHandler.Create)
+	protected.Post("/lop-hoc/:id/buoi-hoc/today", lessonHandler.StartToday)
 	protected.Patch("/buoi-hoc/:id/status", lessonHandler.UpdateStatus)
 	protected.Delete("/buoi-hoc/:id", lessonHandler.Delete)
 

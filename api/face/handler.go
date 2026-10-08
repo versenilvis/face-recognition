@@ -2,6 +2,7 @@ package face
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"strconv"
 
@@ -42,8 +43,21 @@ func (h *Handler) RegisterFace(c fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "cannot read bytes"})
 	}
 
-	face, err := h.service.RegisterFace(c.Context(), svID, imgBytes)
+	override := c.FormValue("override") == "true" || c.Query("override") == "true"
+
+	face, conflict, err := h.service.RegisterFace(c.Context(), svID, imgBytes, override)
 	if err != nil {
+		if errors.Is(err, ErrFaceConflict) && conflict != nil {
+			return c.Status(fiber.StatusConflict).JSON(fiber.Map{
+				"error": "face_conflict",
+				"message": fmt.Sprintf("Khuôn mặt này đã được đăng ký cho sinh viên %s (%s)", conflict.HoTen, conflict.MSSV),
+				"conflict_student": fiber.Map{
+					"id":     conflict.ID,
+					"mssv":   conflict.MSSV,
+					"ho_ten": conflict.HoTen,
+				},
+			})
+		}
 		if errors.Is(err, ErrNotFound) {
 			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "sinh vien khong ton tai"})
 		}
@@ -59,10 +73,18 @@ func (h *Handler) RegisterFace(c fiber.Ctx) error {
 		return c.Status(fiber.StatusBadGateway).JSON(fiber.Map{"error": err.Error()})
 	}
 
-	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+	res := fiber.Map{
 		"message":   "dang ky khuon mat thanh cong",
 		"det_score": face.DetScore,
-	})
+	}
+	if conflict != nil && override {
+		res["reassigned_from"] = fiber.Map{
+			"id":     conflict.ID,
+			"mssv":   conflict.MSSV,
+			"ho_ten": conflict.HoTen,
+		}
+	}
+	return c.Status(fiber.StatusOK).JSON(res)
 }
 
 func (h *Handler) DeleteFace(c fiber.Ctx) error {

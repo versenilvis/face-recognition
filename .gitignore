@@ -9,3 +9,5 @@ scratch/
 main
 .scratch/
 infer/models/
+cookies.txt
+*.db

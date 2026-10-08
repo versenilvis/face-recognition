@@ -130,3 +130,38 @@ func (h *Handler) ListOpen(c fiber.Ctx) error {
 	}
 	return c.JSON(ds)
 }
+
+func (h *Handler) GetByID(c fiber.Ctx) error {
+	id, err := strconv.Atoi(c.Params("id"))
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid id"})
+	}
+
+	b, err := h.repo.GetByID(c.Context(), id)
+	if err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "lesson not found"})
+	}
+	return c.JSON(b)
+}
+
+func (h *Handler) StartToday(c fiber.Ctx) error {
+	lopHocID, err := strconv.Atoi(c.Params("id"))
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid class id"})
+	}
+
+	exists, err := h.repo.CheckLopHocExists(c.Context(), lopHocID)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "db error"})
+	}
+	if !exists {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "lop hoc khong ton tai"})
+	}
+
+	b, err := h.repo.GetOrCreateToday(c.Context(), lopHocID)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "db error"})
+	}
+	return c.JSON(b)
+}
+

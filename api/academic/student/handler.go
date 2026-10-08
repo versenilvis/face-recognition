@@ -116,3 +116,44 @@ func (h *Handler) Delete(c fiber.Ctx) error {
 		"affected_rows": affected,
 	})
 }
+
+type BulkCreateRq struct {
+	Students []StudentItem `json:"students"`
+}
+
+func (h *Handler) BulkCreate(c fiber.Ctx) error {
+	lopHocID, err := strconv.Atoi(c.Params("id"))
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid class id"})
+	}
+
+	exists, err := h.repo.CheckLopHocExists(c.Context(), lopHocID)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "db error"})
+	}
+	if !exists {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "lop hoc khong ton tai"})
+	}
+
+	var items []StudentItem
+	if err := c.Bind().Body(&items); err != nil || len(items) == 0 {
+		var rq BulkCreateRq
+		if err2 := c.Bind().Body(&rq); err2 == nil && len(rq.Students) > 0 {
+			items = rq.Students
+		} else {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid or empty student list"})
+		}
+	}
+
+	created, skipped, err := h.repo.BulkCreate(c.Context(), lopHocID, items)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "db error"})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"message": "bulk import completed",
+		"created": created,
+		"skipped": skipped,
+	})
+}
+

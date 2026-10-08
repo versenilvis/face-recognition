@@ -61,6 +61,31 @@ func (r *Repo) GetRosterWithEmbeddings(ctx context.Context, lopID int) ([]Roster
 	return roster, rows.Err()
 }
 
+func (r *Repo) GetGlobalRosterWithEmbeddings(ctx context.Context) ([]RosterStudent, error) {
+	rows, err := r.db.Read.QueryContext(ctx, `
+		select sv.id, sv.mssv, sv.ho_ten, fe.embedding
+		from sinh_vien sv
+		join face_embedding fe on sv.id = fe.sinh_vien_id
+	`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var roster []RosterStudent
+	for rows.Next() {
+		var s RosterStudent
+		var embedStr string
+		if err := rows.Scan(&s.ID, &s.MSSV, &s.HoTen, &embedStr); err != nil {
+			continue
+		}
+		if err := json.Unmarshal([]byte(embedStr), &s.Embedding); err == nil {
+			roster = append(roster, s)
+		}
+	}
+	return roster, rows.Err()
+}
+
 func (r *Repo) SaveFaceEmbedding(ctx context.Context, svID int, embeddingJSON string) error {
 	_, err := r.db.Write.ExecContext(ctx, `
 		insert into face_embedding (sinh_vien_id, embedding, registered_at)

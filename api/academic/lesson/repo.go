@@ -3,6 +3,7 @@ package lesson
 import (
 	"context"
 	"database/sql"
+	"time"
 
 	"github.com/versenilvis/face-recognition/db"
 )
@@ -68,11 +69,51 @@ func (r *Repo) ListOpen(ctx context.Context) ([]BuoiHoc, error) {
 
 func (r *Repo) GetByID(ctx context.Context, id int) (*BuoiHoc, error) {
 	var b BuoiHoc
-	err := r.db.Read.QueryRowContext(ctx, "select id, lop_hoc_id, ngay, bat_dau, ket_thuc, trang_thai from buoi_hoc where id = ?", id).Scan(&b.ID, &b.LopHocID, &b.Ngay, &b.BatDau, &b.KetThuc, &b.TrangThai)
+	err := r.db.Read.QueryRowContext(ctx, `
+		select b.id, b.lop_hoc_id, coalesce(l.ten, ''), b.ngay, b.bat_dau, b.ket_thuc, b.trang_thai
+		from buoi_hoc b
+		left join lop_hoc l on b.lop_hoc_id = l.id
+		where b.id = ?
+	`, id).Scan(&b.ID, &b.LopHocID, &b.TenLop, &b.Ngay, &b.BatDau, &b.KetThuc, &b.TrangThai)
 	if err != nil {
 		return nil, err
 	}
 	return &b, nil
+}
+
+func (r *Repo) GetOrCreateToday(ctx context.Context, lopID int) (*BuoiHoc, error) {
+	today := time.Now().Format("2006-01-02")
+	var b BuoiHoc
+	err := r.db.Read.QueryRowContext(ctx, `
+		select b.id, b.lop_hoc_id, coalesce(l.ten, ''), b.ngay, b.bat_dau, b.ket_thuc, b.trang_thai
+		from buoi_hoc b
+		left join lop_hoc l on b.lop_hoc_id = l.id
+		where b.lop_hoc_id = ? and b.ngay = ?
+		order by b.id desc limit 1
+	`, lopID, today).Scan(&b.ID, &b.LopHocID, &b.TenLop, &b.Ngay, &b.BatDau, &b.KetThuc, &b.TrangThai)
+
+	if err == nil {
+		if b.TrangThai != "open" {
+			_, _ = r.UpdateStatus(ctx, b.ID, "open")
+			b.TrangThai = "open"
+		}
+		return &b, nil
+	} else if err != sql.ErrNoRows {
+		return nil, err
+	}
+
+	res, err := r.db.Write.ExecContext(ctx, `
+		insert into buoi_hoc (lop_hoc_id, ngay, trang_thai)
+		values (?, ?, 'open')
+	`, lopID, today)
+	if err != nil {
+		return nil, err
+	}
+	newID, err := res.LastInsertId()
+	if err != nil {
+		return nil, err
+	}
+	return r.GetByID(ctx, int(newID))
 }
 
 func (r *Repo) Create(ctx context.Context, lopID int, ngay string, batDau, ketThuc *string) (int64, error) {

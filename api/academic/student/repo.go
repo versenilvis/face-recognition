@@ -3,6 +3,7 @@ package student
 import (
 	"context"
 	"database/sql"
+	"strings"
 
 	"github.com/versenilvis/face-recognition/db"
 )
@@ -219,5 +220,65 @@ func (r *Repo) Delete(ctx context.Context, id int) (int64, error) {
 		return errRows
 	})
 	return affected, err
+}
+
+type StudentItem struct {
+	MSSV  string `json:"mssv"`
+	HoTen string `json:"ho_ten"`
+}
+
+func (r *Repo) BulkCreate(ctx context.Context, lopID int, students []StudentItem) (int, int, error) {
+	var created, skipped int
+	err := r.db.InTransaction(ctx, func(tx *sql.Tx) error {
+		for _, s := range students {
+			mssv := strings.TrimSpace(s.MSSV)
+			hoTen := strings.TrimSpace(s.HoTen)
+			if mssv == "" || hoTen == "" {
+				skipped++
+				continue
+			}
+
+			var exists int
+			err := tx.QueryRowContext(ctx, "select 1 from sinh_vien where mssv = ? and lop_hoc_id = ?", mssv, lopID).Scan(&exists)
+			if err == nil {
+				skipped++
+				continue
+			} else if err != sql.ErrNoRows {
+				return err
+			}
+
+			res, err := tx.ExecContext(ctx, "insert into sinh_vien (mssv, ho_ten, lop_hoc_id) values (?, ?, ?)", mssv, hoTen, lopID)
+			if err != nil {
+				return err
+			}
+			newID, err := res.LastInsertId()
+			if err != nil {
+				return err
+			}
+			created++
+
+			var existingEmbedding string
+			err = tx.QueryRowContext(ctx, `
+				select fe.embedding
+				from face_embedding fe
+				join sinh_vien sv on fe.sinh_vien_id = sv.id
+				where sv.mssv = ?
+				limit 1
+			`, mssv).Scan(&existingEmbedding)
+
+			if err == nil && existingEmbedding != "" {
+				_, _ = tx.ExecContext(ctx, `
+					insert into face_embedding (sinh_vien_id, embedding, registered_at)
+					values (?, ?, CURRENT_TIMESTAMP)
+				`, newID, existingEmbedding)
+			}
+		}
+		return nil
+	})
+
+	if err != nil {
+		return 0, 0, err
+	}
+	return created, skipped, nil
 }
 

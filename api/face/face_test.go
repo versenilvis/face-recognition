@@ -176,3 +176,74 @@ func TestFaceAndCheckin(t *testing.T) {
 		t.Errorf("expected 200 for delete face, got: %d", respDelFace.StatusCode)
 	}
 }
+
+func TestFaceConflict(t *testing.T) {
+	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{
+			"faces": [
+				{
+					"bbox": [50, 50, 200, 200],
+					"det_score": 0.99,
+					"embedding": [1.0, 0.0, 0.0],
+					"liveness": {"label": "Real", "score": 0.98}
+				}
+			]
+		}`))
+	}))
+	defer mockServer.Close()
+
+	app, cookie := setupFaceTest(t, mockServer.URL)
+
+	// tao mon hoc, lop hoc
+	createMhReq := httptest.NewRequest("POST", "/protected/mon-hoc", strings.NewReader(`{"ma_mon": "CS101", "ten": "Computer Science"}`))
+	createMhReq.Header.Set("Content-Type", "application/json")
+	createMhReq.AddCookie(cookie)
+	_, _ = app.Test(createMhReq)
+
+	createClassReq := httptest.NewRequest("POST", "/protected/lop-hoc", strings.NewReader(`{"ten": "CS-01", "mon_hoc_id": 1}`))
+	createClassReq.Header.Set("Content-Type", "application/json")
+	createClassReq.AddCookie(cookie)
+	_, _ = app.Test(createClassReq)
+
+	// tao sinh vien 1 va sinh vien 2
+	sv1Req := httptest.NewRequest("POST", "/protected/lop-hoc/1/sinh-vien", strings.NewReader(`{"mssv": "24520560", "ho_ten": "Nguyen Trong Hoang"}`))
+	sv1Req.Header.Set("Content-Type", "application/json")
+	sv1Req.AddCookie(cookie)
+	_, _ = app.Test(sv1Req)
+
+	sv2Req := httptest.NewRequest("POST", "/protected/lop-hoc/1/sinh-vien", strings.NewReader(`{"mssv": "24520537", "ho_ten": "La Minh Hoang"}`))
+	sv2Req.Header.Set("Content-Type", "application/json")
+	sv2Req.AddCookie(cookie)
+	_, _ = app.Test(sv2Req)
+
+	// 1. dang ky khuon mat cho sinh vien 1 (Nguyen Trong Hoang) -> thanh cong 200
+	reg1Req := createMultipartReq("POST", "/protected/sinh-vien/1/face", "image", "face.jpg", []byte("img_hoang"))
+	reg1Req.AddCookie(cookie)
+	resp1, err := app.Test(reg1Req)
+	if err != nil || resp1.StatusCode != http.StatusOK {
+		t.Fatalf("expected 200 registering sv1 face, got: %d", resp1.StatusCode)
+	}
+
+	// 2. dang ky cung khuon mat do cho sinh vien 2 (La Minh Hoang) ma khong co override -> phai bi 409 Conflict
+	reg2Req := createMultipartReq("POST", "/protected/sinh-vien/2/face", "image", "face.jpg", []byte("img_hoang"))
+	reg2Req.AddCookie(cookie)
+	resp2, err := app.Test(reg2Req)
+	if err != nil {
+		t.Fatalf("request failed: %v", err)
+	}
+	if resp2.StatusCode != http.StatusConflict {
+		t.Errorf("expected 409 Conflict for duplicate face, got: %d", resp2.StatusCode)
+	}
+
+	// 3. dang ky voi override=true -> thanh cong 200 va go bo o sv1
+	regOverrideReq := createMultipartReq("POST", "/protected/sinh-vien/2/face?override=true", "image", "face.jpg", []byte("img_hoang"))
+	regOverrideReq.AddCookie(cookie)
+	respOverride, err := app.Test(regOverrideReq)
+	if err != nil {
+		t.Fatalf("request failed: %v", err)
+	}
+	if respOverride.StatusCode != http.StatusOK {
+		t.Errorf("expected 200 with override=true, got: %d", respOverride.StatusCode)
+	}
+}
