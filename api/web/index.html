@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FaceAttendance - Điểm danh thời gian thực</title>
+    <meta name="description" content="Hệ thống nhận diện khuôn mặt và điểm danh sinh viên tự động qua camera">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <style type="text/tailwindcss">
+        @import "tailwindcss";
+
+        :root {
+            font-family: 'Poppins', sans-serif;
+        }
+
+        .modal-backdrop { display: none; }
+        .modal-backdrop.active { display: flex; }
+
+        .dock-auto-btn.paused { background: rgba(15, 23, 42, 0.7); color: #94a3b8; }
+        .dock-auto-btn.paused .auto-live-dot { background: #64748b; box-shadow: none; animation: none; }
+        .dock-icon-btn.active { color: #fff; background: rgba(37, 99, 235, 0.25); }
+        .lesson-status-pill.closed { background: rgba(30, 41, 59, 0.6); color: #94a3b8; }
+        .lesson-status-pill.closed .status-dot { background: #64748b; box-shadow: none; animation: none; }
+        .hud-status-indicator.paused { background: #f59e0b; box-shadow: 0 0 10px #f59e0b; animation: none; }
+
+        .camera-control-dock {
+            left: 50% !important;
+            translate: none !important;
+            transform: translateX(-50%) translateY(12px) !important;
+            opacity: 0;
+            transition: opacity 0.28s ease, transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+            pointer-events: none;
+            user-select: none;
+        }
+        #video-stage:hover .camera-control-dock,
+        .camera-control-dock:hover,
+        .camera-control-dock.dock-visible {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0) !important;
+            pointer-events: auto;
+        }
+
+        .camera-control-dock button {
+            border: none !important;
+            outline: none !important;
+            box-shadow: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .camera-control-dock button:focus,
+        .camera-control-dock button:focus-visible,
+        .camera-control-dock button:active {
+            outline: none !important;
+            border: none !important;
+            box-shadow: none !important;
+        }
+        #manual-capture-btn {
+            box-shadow: 0 10px 24px -6px rgba(37, 99, 235, 0.5) !important;
+        }
+
+        .camera-hud-top {
+            opacity: 0;
+            transform: translateY(-8px);
+            transition: opacity 0.28s ease, transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+            pointer-events: none;
+        }
+        #video-stage:hover .camera-hud-top,
+        .camera-hud-top:hover,
+        .camera-hud-top.hud-visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .live-item {
+            background: rgba(255, 255, 255, 0.025);
+            border-radius: 12px;
+            padding: 8px 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.18s ease;
+        }
+        .live-item:hover { background: rgba(255, 255, 255, 0.06); }
+        .live-item.is-present { background: rgba(16, 185, 129, 0.08); }
+        .live-item.is-absent { opacity: 0.85; }
+
+        .slide-drawer {
+            transform: translateX(100%);
+            transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .slide-drawer.active {
+            transform: translateX(0);
+        }
+
+        .drawer-tab-btn.active {
+            background: #2563eb;
+            color: #ffffff;
+            box-shadow: 0 6px 20px -4px rgba(37, 99, 235, 0.5);
+        }
+
+        input[type="date"], input[type="time"] {
+            color-scheme: dark;
+        }
+        input[type="date"]::-webkit-calendar-picker-indicator,
+        input[type="time"]::-webkit-calendar-picker-indicator {
+            filter: invert(0.8);
+            cursor: pointer;
+            transition: filter 0.15s ease;
+        }
+        input[type="date"]::-webkit-calendar-picker-indicator:hover,
+        input[type="time"]::-webkit-calendar-picker-indicator:hover {
+            filter: invert(1);
+        }
+
+        .toast-container {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            z-index: 9999;
+            pointer-events: none;
+        }
+        .toast {
+            padding: 12px 18px;
+            border-radius: 14px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            box-shadow: 0 12px 30px -5px rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(16px);
+            color: #fff;
+            pointer-events: auto;
+        }
+        .toast.toast-success { background: rgba(6, 78, 59, 0.95); }
+        .toast.toast-error { background: rgba(136, 19, 55, 0.95); }
+        .toast.toast-info { background: rgba(15, 23, 42, 0.95); }
+    </style>
+</head>
+<body class="h-screen overflow-hidden flex flex-col bg-[#04060a] m-0 p-0 font-sans text-slate-100 select-none">
+
+    <!-- Top Navigation Header -->
+    <header class="relative z-40 h-[60px] min-h-[60px] px-5 flex justify-between items-center bg-[#070c18]/90 backdrop-blur-2xl shrink-0 shadow-lg shadow-black/40">
+        <div class="flex items-center gap-3 min-w-0">
+            <div class="w-9 h-9 shrink-0 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-600/30">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 7V5a2 2 0 0 1 2-2h2"></path>
+                    <path d="M17 3h2a2 2 0 0 1 2 2v2"></path>
+                    <path d="M21 17v2a2 2 0 0 1-2 2h-2"></path>
+                    <path d="M7 21H5a2 2 0 0 1-2-2v-2"></path>
+                    <circle cx="12" cy="12" r="3"></circle>
+                    <path d="M9 16c1.5 1 4.5 1 6 0"></path>
+                </svg>
+            </div>
+            <div class="min-w-0">
+                <h1 class="text-sm font-bold tracking-tight leading-tight text-white">FaceAttendance</h1>
+                <p class="text-[11px] text-slate-400 whitespace-nowrap truncate max-w-[200px]" id="nav-lesson-name">Chưa chọn buổi học</p>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-2.5 flex-1 justify-center max-w-[560px]" id="lesson-dropdown-container">
+            <div class="relative flex items-center">
+                <button id="btn-lesson-menu" type="button" class="group flex items-center gap-2 bg-[#0c1424]/90 hover:bg-[#111c33] px-3.5 py-1.5 rounded-full shadow-inner transition-all cursor-pointer outline-none">
+                    <span class="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_#34d399] animate-pulse" id="kiosk-header-dot" style="display: none;"></span>
+                    <span class="text-xs font-semibold text-white whitespace-nowrap" id="kiosk-class-name">Chưa mở buổi học</span>
+                    <span class="font-mono text-xs text-blue-400 whitespace-nowrap" id="kiosk-lesson-date"></span>
+                    <svg class="text-slate-400 group-hover:text-white transition-transform duration-100" id="lesson-menu-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                </button>
+
+                <!-- Sleek Dropdown Floating Menu for Lessons -->
+                <div id="lesson-menu-dropdown" class="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-80 max-w-[90vw] bg-[#070d1d]/95 backdrop-blur-2xl rounded-2xl p-2.5 shadow-2xl z-50 transition-all duration-100 opacity-0 pointer-events-none -translate-y-2">
+                    <div class="px-2.5 py-1.5 flex items-center justify-between text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                        <span>Chọn buổi điểm danh</span>
+                        <button id="btn-dropdown-new-lesson" type="button" class="text-blue-400 hover:text-blue-300 font-semibold cursor-pointer lowercase first-letter:uppercase">+ Tạo mới</button>
+                    </div>
+                    <div id="lesson-menu-list" class="flex flex-col gap-1 max-h-64 overflow-y-auto mt-1 pr-0.5">
+                        <div class="text-xs text-slate-500 p-3 text-center">Đang tải danh sách...</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="lesson-status-pill flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/15 text-emerald-400 whitespace-nowrap shrink-0" id="lesson-status-pill" style="display: none;">
+                <span class="status-dot w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_#34d399] animate-pulse" id="status-dot"></span>
+                <span id="lesson-status-text">Đang mở</span>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-2">
+            <button id="btn-finish-lesson" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 text-xs font-semibold transition-all cursor-pointer" style="display: none;">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect></svg>
+                Kết thúc buổi
+            </button>
+            <a href="/dashboard.html" id="btn-to-dashboard" class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-200 text-xs font-semibold transition-all">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                Quản lý
+            </a>
+        </div>
+    </header>
+
+    <!-- Main Grid: Left Camera, Right Sidebar & Slide Drawer -->
+    <main class="grid grid-cols-1 lg:grid-cols-[1fr_290px] xl:grid-cols-[1fr_310px] gap-3 flex-1 h-[calc(100vh-60px)] p-3 box-border overflow-hidden">
+
+        <!-- Left: Camera Viewport -->
+        <section class="flex flex-col relative h-full min-h-0">
+            <div id="video-stage" class="group relative w-full h-full flex-1 bg-black rounded-3xl overflow-hidden shadow-2xl flex items-center justify-center">
+                <video id="camera-stream" autoplay playsinline muted class="w-full h-full object-cover -scale-x-100"></video>
+                <canvas id="overlay-canvas" class="absolute inset-0 w-full h-full object-cover pointer-events-none z-10"></canvas>
+
+                <!-- Empty State Overlay -->
+                <div id="kiosk-empty-state" class="absolute inset-0 flex items-center justify-center bg-[#04060a]/95 z-30 p-6" style="display: none;">
+                    <div class="text-center max-w-[420px] bg-[#091122]/80 rounded-3xl p-8 shadow-2xl backdrop-blur-2xl">
+                        <div class="w-14 h-14 rounded-2xl bg-blue-600/15 text-blue-400 flex items-center justify-center mx-auto mb-4">
+                            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                                <line x1="16" y1="2" x2="16" y2="6"></line>
+                                <line x1="8" y1="2" x2="8" y2="6"></line>
+                                <line x1="3" y1="10" x2="21" y2="10"></line>
+                            </svg>
+                        </div>
+                        <h3 id="empty-state-title" class="text-lg font-bold text-white mb-2">Chọn lớp để bắt đầu</h3>
+                        <p id="empty-state-desc" class="text-xs text-slate-400 leading-relaxed mb-6">Chưa có buổi học nào mở. Bạn có thể tạo nhanh buổi học ngay tại đây hoặc mở từ trang quản lý.</p>
+                        <div class="flex flex-col sm:flex-row items-center justify-center gap-2.5">
+                            <button id="btn-empty-create-lesson" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-xl text-xs transition-all shadow-lg shadow-blue-600/30 cursor-pointer">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                                Tạo buổi học ngay
+                            </button>
+                            <a href="/dashboard.html" class="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2.5 bg-white/5 hover:bg-white/10 text-slate-200 font-semibold rounded-xl text-xs transition-all">
+                                Xem danh sách lớp
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- HUD Top Bar -->
+                <div class="camera-hud-top absolute top-4 inset-x-5 flex justify-between items-center z-20 pointer-events-none">
+                    <div class="bg-[#070c18]/60 backdrop-blur-xl px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-2 pointer-events-auto text-white shadow-lg">
+                        <span class="hud-status-indicator w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_#34d399] animate-pulse" id="hud-status-dot"></span>
+                        <span id="hud-status-text">Khởi tạo camera...</span>
+                    </div>
+                    <div class="bg-[#070c18]/60 backdrop-blur-xl px-3 py-1.5 rounded-full text-xs text-slate-300 flex items-center gap-1.5 pointer-events-auto shadow-lg" id="hud-face-counter">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="12" cy="7" r="4"></circle>
+                        </svg>
+                        <span id="hud-face-count">0 mặt phát hiện</span>
+                    </div>
+                </div>
+
+                <!-- Bottom Minimalist Floating Pill Dock -->
+                <div class="camera-control-dock absolute bottom-6 left-1/2 flex items-center gap-2 px-3 py-1.5 bg-[#070c18]/55 hover:bg-[#070c18]/85 backdrop-blur-2xl rounded-full shadow-2xl z-20">
+                    <button id="auto-toggle-btn" class="dock-auto-btn inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-400 text-xs font-bold tracking-wide cursor-pointer hover:bg-emerald-500/25 transition-all outline-none focus:outline-none focus:ring-0 active:scale-95" title="Bật/Tắt tự động quét">
+                        <span class="auto-live-dot w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_#34d399] animate-pulse"></span>
+                        <span id="auto-toggle-text">LIVE</span>
+                    </button>
+
+                    <button id="manual-capture-btn" class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold transition-all cursor-pointer outline-none focus:outline-none focus:ring-0 active:scale-95" title="Quét điểm danh ngay">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <circle cx="12" cy="12" r="3"></circle>
+                        </svg>
+                        Quét ngay
+                    </button>
+
+                    <div class="w-px h-3.5 bg-white/10 mx-0.5"></div>
+
+                    <button id="label-toggle-btn" class="dock-icon-btn active w-7 h-7 rounded-full bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white flex items-center justify-center transition-all cursor-pointer outline-none focus:outline-none focus:ring-0 active:scale-95" title="Bật/Tắt nhãn tên">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path>
+                            <line x1="7" y1="7" x2="7.01" y2="7"></line>
+                        </svg>
+                    </button>
+                    <button id="sound-btn" class="dock-icon-btn active w-7 h-7 rounded-full bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white flex items-center justify-center transition-all cursor-pointer outline-none focus:outline-none focus:ring-0 active:scale-95" title="Bật/Tắt âm thanh">
+                        <svg id="sound-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                            <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+                        </svg>
+                    </button>
+                    <button id="fullscreen-btn" class="dock-icon-btn w-7 h-7 rounded-full bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white flex items-center justify-center transition-all cursor-pointer outline-none focus:outline-none focus:ring-0 active:scale-95" title="Toàn màn hình">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Right: Compact Sidebar with Integrated Supabase-style Slide Drawer -->
+        <aside class="relative flex flex-col h-full bg-[#070c18]/85 backdrop-blur-2xl rounded-3xl p-3.5 box-border overflow-hidden shadow-2xl">
+
+            <!-- VIEW 1: ROSTER & ATTENDANCE LIST -->
+            <div id="roster-view" class="flex flex-col h-full w-full">
+                <!-- Sidebar Header: Subject, Class & Lesson -->
+                <div class="flex justify-between items-start mb-3 shrink-0">
+                    <div class="min-w-0 pr-2">
+                        <h2 class="text-xs font-bold text-blue-400 uppercase tracking-wider truncate" id="sidebar-subject-title">Môn học</h2>
+                        <div class="text-sm font-bold text-white tracking-tight truncate leading-snug" id="sidebar-class-title">Chưa chọn lớp</div>
+                        <p class="text-[11px] text-slate-400 truncate mt-0.5" id="current-lesson-label">Chưa chọn buổi</p>
+                    </div>
+                    <div class="text-right shrink-0">
+                        <span class="font-mono text-xl font-extrabold text-emerald-400 leading-none" id="live-count">0/0</span>
+                        <div class="text-[10px] text-slate-400 font-medium">có mặt</div>
+                    </div>
+                </div>
+
+                <!-- Minimalist Search -->
+                <div class="mb-2.5 relative shrink-0">
+                    <svg class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                    </svg>
+                    <input type="text" id="live-search-input" class="w-full pl-8.5 pr-3 py-1.5 bg-[#0b1222]/90 rounded-xl text-xs text-white placeholder:text-slate-500 outline-none focus:bg-[#101b33] focus:ring-2 focus:ring-blue-500/40 transition-all" placeholder="Tìm tên hoặc MSSV...">
+                </div>
+
+                <!-- Student List (Compact: Name + MSSV only) -->
+                <div class="flex flex-col gap-1.5 flex-1 overflow-y-auto pr-0.5 min-h-0" id="live-list">
+                    <div class="text-slate-500 text-center mt-12 text-xs">
+                        Đang kết nối buổi học...
+                    </div>
+                </div>
+
+                <!-- Quick Management Launcher Bar -->
+                <div class="pt-2.5 mt-2 flex flex-col gap-1.5 shrink-0 bg-[#070c18]">
+                    <!-- Primary Quick Action: Slide drawer openers -->
+                    <div class="grid grid-cols-3 gap-1.5">
+                        <button id="btn-open-add-student" class="py-1.5 px-2 bg-blue-600/15 hover:bg-blue-600/25 text-blue-300 hover:text-white rounded-xl text-[11px] font-semibold transition-all cursor-pointer flex items-center justify-center gap-1 truncate" title="Thêm sinh viên vào lớp">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><line x1="20" y1="8" x2="20" y2="14"></line><line x1="23" y1="11" x2="17" y2="11"></line></svg>
+                            <span>+ SV</span>
+                        </button>
+                        <button id="btn-open-create-lesson" class="py-1.5 px-2 bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white rounded-xl text-[11px] font-semibold transition-all cursor-pointer flex items-center justify-center gap-1 truncate" title="Tạo buổi học mới">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="12" y1="11" x2="12" y2="17"></line><line x1="9" y1="14" x2="15" y2="14"></line></svg>
+                            <span>+ Buổi</span>
+                        </button>
+                        <button id="btn-open-create-class" class="py-1.5 px-2 bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white rounded-xl text-[11px] font-semibold transition-all cursor-pointer flex items-center justify-center gap-1 truncate" title="Tạo lớp học mới">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+                            <span>+ Lớp</span>
+                        </button>
+                    </div>
+
+                    <!-- Secondary utilities -->
+                    <div class="flex gap-1.5">
+                        <button id="btn-sync-attendance" class="flex-1 py-1 px-2 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-slate-200 rounded-xl text-[10px] font-medium transition-all cursor-pointer flex items-center justify-center gap-1" title="Đồng bộ lại danh sách">
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+                            Đồng bộ
+                        </button>
+                        <button id="btn-export-csv" class="flex-1 py-1 px-2 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-slate-200 rounded-xl text-[10px] font-medium transition-all cursor-pointer flex items-center justify-center gap-1" title="Xuất CSV">
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                            Xuất CSV
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- VIEW 2: SUPABASE-STYLE SLIDE-OVER SHEET (DRAWER) -->
+            <div id="slide-manage-drawer" class="slide-drawer absolute inset-0 bg-[#070c18] backdrop-blur-2xl z-30 p-3.5 flex flex-col shadow-2xl overflow-x-hidden">
+
+                <!-- Drawer Top Bar: Title & Close -->
+                <div class="flex justify-between items-center mb-3 shrink-0">
+                    <span class="text-xs font-bold text-white tracking-tight uppercase" id="drawer-title">Quản lý nhanh</span>
+                    <button id="btn-close-drawer" class="w-7 h-7 rounded-xl bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white flex items-center justify-center transition-all cursor-pointer" aria-label="Đóng">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Tabs: [Sinh viên] [Buổi học] [Lớp học] -->
+                <div class="grid grid-cols-3 gap-1 bg-[#0b1222] p-1 rounded-2xl mb-3 shrink-0">
+                    <button class="drawer-tab-btn active py-1.5 text-[11px] font-semibold rounded-xl text-slate-400 transition-all cursor-pointer" id="tab-btn-student" onclick="cameraCtrl.switchDrawerTab('student')">
+                        Sinh viên
+                    </button>
+                    <button class="drawer-tab-btn py-1.5 text-[11px] font-semibold rounded-xl text-slate-400 transition-all cursor-pointer" id="tab-btn-lesson" onclick="cameraCtrl.switchDrawerTab('lesson')">
+                        Buổi học
+                    </button>
+                    <button class="drawer-tab-btn py-1.5 text-[11px] font-semibold rounded-xl text-slate-400 transition-all cursor-pointer" id="tab-btn-class" onclick="cameraCtrl.switchDrawerTab('class')">
+                        Lớp học
+                    </button>
+                </div>
+
+                <!-- PANE 1: FORM THÊM SINH VIÊN (Step Wizard) -->
+                <div id="drawer-pane-student" class="flex-1 flex flex-col overflow-y-auto min-h-0">
+
+                    <!-- Wizard steps indicator -->
+                    <div class="flex items-center gap-1.5 mb-3 shrink-0">
+                        <span class="text-[10px] font-semibold text-blue-400" id="ws-text-step">Bước 1: Tìm MSSV</span>
+                        <div class="flex-1 h-1 bg-white/5 rounded-full overflow-hidden">
+                            <div class="h-full bg-blue-600 transition-all duration-300 w-1/2" id="ws-progress-bar"></div>
+                        </div>
+                    </div>
+
+                    <!-- Step 1: Input Class & MSSV -->
+                    <div id="wizard-step-1" class="flex flex-col flex-1">
+                        <div id="no-classes-alert" class="p-3 bg-amber-500/10 rounded-2xl mb-3 flex items-center justify-between gap-2" style="display: none;">
+                            <div class="min-w-0">
+                                <p class="text-xs font-bold text-amber-300">Chưa có lớp học nào</p>
+                                <p class="text-[11px] text-slate-400 mt-0.5">Vui lòng tạo lớp học trước khi thêm sinh viên</p>
+                            </div>
+                            <button type="button" class="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold shrink-0 cursor-pointer" onclick="cameraCtrl.switchDrawerTab('class')">Tạo lớp</button>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="block text-[11px] font-medium text-slate-400 mb-1" for="quick-student-class">Chọn lớp học *</label>
+                            <select id="quick-student-class" class="w-full px-3 py-2 bg-[#0b1222] rounded-xl text-white text-xs outline-none focus:bg-[#101b33] focus:ring-2 focus:ring-blue-500/40 transition-all cursor-pointer" required>
+                                <option value="">Đang tải lớp học...</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="block text-[11px] font-medium text-slate-400 mb-1" for="quick-student-mssv">Mã số sinh viên (MSSV)</label>
+                            <div class="relative">
+                                <input type="text" id="quick-student-mssv" class="w-full pl-3 pr-8 py-2 bg-[#0b1222] rounded-xl text-white text-xs outline-none focus:bg-[#101b33] focus:ring-2 focus:ring-blue-500/40 transition-all placeholder:text-slate-500" placeholder="Nhập MSSV..." autocomplete="off">
+                                <div class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500" id="mssv-spinner" style="display: none;">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="animate-spin">
+                                        <path d="M21 12a9 9 0 1 1-6.219-8.56"></path>
+                                    </svg>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Found student card -->
+                        <div id="student-found-card" class="flex items-center gap-2.5 p-2.5 bg-emerald-500/10 rounded-xl mb-3" style="display: none;">
+                            <div class="w-8 h-8 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-xs font-bold shrink-0" id="found-avatar">SV</div>
+                            <div class="flex-1 min-w-0">
+                                <div class="font-semibold text-xs text-white truncate" id="found-name">Nguyễn Văn A</div>
+                                <div class="font-mono text-[10px] text-slate-400" id="found-mssv-display">2021001</div>
+                            </div>
+                            <div id="found-face-badge" class="px-2 py-0.5 bg-emerald-500/20 rounded-full text-[10px] font-bold text-emerald-300 shrink-0" style="display: none;">
+                                Đã có mặt
+                            </div>
+                        </div>
+
+                        <!-- New student name form -->
+                        <div id="new-student-form" class="mb-3" style="display: none;">
+                            <label class="block text-[11px] font-medium text-slate-400 mb-1" for="quick-student-name">Họ và tên *</label>
+                            <input type="text" id="quick-student-name" class="w-full px-3 py-2 bg-[#0b1222] rounded-xl text-white text-xs outline-none focus:bg-[#101b33] focus:ring-2 focus:ring-blue-500/40 transition-all placeholder:text-slate-500" placeholder="VD: Nguyễn Văn A">
+                        </div>
+
+                        <div class="text-[11px] text-slate-400 mb-4 p-2 bg-white/[0.02] rounded-xl" id="auto-class-notice" style="display: none;">
+                            Sẽ thêm vào: <strong class="text-blue-400" id="auto-class-name">--</strong>
+                        </div>
+
+                        <div class="mt-auto pt-3 flex gap-2">
+                            <button type="button" class="flex-1 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 text-xs font-semibold transition-all cursor-pointer" onclick="cameraCtrl.closeSlideDrawer()">Hủy</button>
+                            <button type="button" id="btn-wizard-next" class="flex-1 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-semibold shadow-lg shadow-blue-600/30 transition-all cursor-pointer" disabled>
+                                <span id="btn-wizard-next-text">Tiếp theo</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Step 2: Register Face / Confirm -->
+                    <div id="wizard-step-2" class="flex flex-col flex-1" style="display: none;">
+                        <!-- Case A: Student has face -->
+                        <div id="face-exists-confirm" style="display: none;">
+                            <div class="p-3 bg-emerald-500/10 rounded-2xl mb-4">
+                                <p class="font-bold text-xs text-white mb-1">Sinh viên đã có khuôn mặt đăng ký</p>
+                                <p class="text-[11px] text-slate-400 leading-relaxed">Khuôn mặt sẽ được tái sử dụng từ lớp trước, không cần chụp lại.</p>
+                            </div>
+                            <div class="mt-auto pt-3 flex gap-2">
+                                <button type="button" id="btn-back-step1" class="flex-1 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 text-xs font-semibold transition-all cursor-pointer">Quay lại</button>
+                                <button type="button" id="btn-submit-student" class="flex-1 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold shadow-lg shadow-blue-600/30 transition-all cursor-pointer">Thêm vào lớp</button>
+                            </div>
+                        </div>
+
+                        <!-- Case B: Capture Face Webcam -->
+                        <div id="face-capture-form" class="flex flex-col flex-1">
+                            <div class="relative w-full h-44 bg-black rounded-2xl overflow-hidden flex items-center justify-center mb-2" id="face-reg-preview-box">
+                                <video id="face-reg-live-video" autoplay playsinline muted class="w-full h-full object-cover -scale-x-100"></video>
+                                <canvas id="face-reg-canvas" class="absolute inset-0 w-full h-full object-cover" style="display: none;"></canvas>
+                                <div id="face-target-guide" class="absolute w-28 h-36 rounded-full shadow-[inset_0_0_0_2px_rgba(96,165,250,0.4)] pointer-events-none"></div>
+                                <div id="face-snap-flash" class="absolute inset-0 bg-white opacity-0 pointer-events-none transition-opacity"></div>
+                            </div>
+                            <div class="flex justify-between items-center text-[11px] text-slate-400 mb-3 gap-2">
+                                <span>Nhìn camera hoặc tải ảnh</span>
+                                <div class="flex items-center gap-1.5">
+                                    <label for="input-face-file" class="px-2.5 py-1 rounded-xl bg-white/10 hover:bg-white/20 text-slate-200 text-[11px] font-medium transition-all cursor-pointer flex items-center gap-1" title="Tải ảnh chân dung từ máy tính">
+                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                                        Tải ảnh
+                                    </label>
+                                    <input type="file" id="input-face-file" accept="image/*" style="display: none;">
+                                    <button type="button" id="btn-snap-webcam" class="px-2.5 py-1 rounded-xl bg-blue-600/30 hover:bg-blue-600/50 text-blue-300 text-[11px] font-medium transition-all cursor-pointer">Chụp thử</button>
+                                </div>
+                            </div>
+                            <div class="mt-auto pt-3 flex gap-2">
+                                <button type="button" id="btn-back-step1-b" class="flex-1 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 text-xs font-semibold transition-all cursor-pointer">Quay lại</button>
+                                <button type="button" id="btn-submit-student-new" class="flex-1 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold shadow-lg shadow-blue-600/30 transition-all cursor-pointer">Lưu &amp; Đăng ký</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PANE 2: FORM TẠO BUỔI HỌC -->
+                <div id="drawer-pane-lesson" class="flex-1 flex flex-col overflow-y-auto min-h-0" style="display: none;">
+                    <form id="drawer-form-lesson" class="flex flex-col flex-1">
+                        <div class="mb-3">
+                            <label class="block text-[11px] font-medium text-slate-400 mb-1" for="quick-lesson-class">Chọn lớp học *</label>
+                            <select id="quick-lesson-class" class="w-full px-3 py-2 bg-[#0b1222] rounded-xl text-white text-xs outline-none focus:bg-[#101b33] focus:ring-2 focus:ring-blue-500/40 transition-all cursor-pointer" required>
+                                <option value="">Đang tải lớp học...</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="block text-[11px] font-medium text-slate-400 mb-1" for="quick-lesson-date">Ngày học *</label>
+                            <input type="date" id="quick-lesson-date" class="w-full px-3 py-2 bg-[#0b1222] rounded-xl text-white text-xs outline-none focus:bg-[#101b33] focus:ring-2 focus:ring-blue-500/40 transition-all cursor-pointer" required>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2 mb-2">
+                            <div>
+                                <label class="block text-[11px] font-medium text-slate-400 mb-1" for="quick-lesson-start">Bắt đầu</label>
+                                <input type="time" id="quick-lesson-start" value="07:30" class="w-full px-3 py-2 bg-[#0b1222] rounded-xl text-white text-xs outline-none focus:bg-[#101b33] focus:ring-2 focus:ring-blue-500/40 transition-all cursor-pointer">
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-medium text-slate-400 mb-1" for="quick-lesson-end">Kết thúc</label>
+                                <input type="time" id="quick-lesson-end" value="11:30" class="w-full px-3 py-2 bg-[#0b1222] rounded-xl text-white text-xs outline-none focus:bg-[#101b33] focus:ring-2 focus:ring-blue-500/40 transition-all cursor-pointer">
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-1.5 mb-3">
+                            <span class="text-[10px] text-slate-500 shrink-0">Ca học:</span>
+                            <button type="button" class="px-2 py-0.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 text-[10px] font-medium transition-all cursor-pointer" onclick="cameraCtrl.setShiftTime('07:30','11:30')">Ca sáng</button>
+                            <button type="button" class="px-2 py-0.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 text-[10px] font-medium transition-all cursor-pointer" onclick="cameraCtrl.setShiftTime('13:00','16:15')">Ca chiều</button>
+                            <button type="button" class="px-2 py-0.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 text-[10px] font-medium transition-all cursor-pointer" onclick="cameraCtrl.setShiftTime('18:00','21:00')">Ca tối</button>
+                        </div>
+                        <div class="mb-4">
+                            <label class="flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
+                                <input type="checkbox" id="quick-lesson-open-now" checked class="w-4 h-4 rounded bg-[#0b1222] text-blue-600 focus:ring-0">
+                                <span>Mở điểm danh ngay cho buổi này</span>
+                            </label>
+                        </div>
+                        <div class="mt-auto pt-3 flex gap-2">
+                            <button type="button" class="flex-1 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 text-xs font-semibold transition-all cursor-pointer" onclick="cameraCtrl.closeSlideDrawer()">Hủy</button>
+                            <button type="submit" id="btn-submit-lesson" class="flex-1 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold shadow-lg shadow-blue-600/30 transition-all cursor-pointer">Tạo &amp; Bắt đầu</button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- PANE 3: FORM TẠO LỚP HỌC -->
+                <div id="drawer-pane-class" class="flex-1 flex flex-col overflow-y-auto min-h-0" style="display: none;">
+                    <form id="drawer-form-class" class="flex flex-col flex-1">
+                        <div id="no-subject-alert" class="p-3 bg-amber-500/10 rounded-2xl mb-3 flex items-center justify-between gap-2" style="display: none;">
+                            <div class="min-w-0">
+                                <p class="text-xs font-bold text-amber-300">Chưa có môn học nào</p>
+                                <p class="text-[11px] text-slate-400 mt-0.5">Bấm để tạo môn học mẫu ngay</p>
+                            </div>
+                            <button type="button" id="btn-quick-seed-subject" class="px-2.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-semibold shrink-0 cursor-pointer">Tạo môn mẫu</button>
+                        </div>
+                        <div class="mb-3">
+                            <label class="block text-[11px] font-medium text-slate-400 mb-1" for="quick-class-name">Tên lớp học *</label>
+                            <input type="text" id="quick-class-name" class="w-full px-3 py-2 bg-[#0b1222] rounded-xl text-white text-xs outline-none focus:bg-[#101b33] focus:ring-2 focus:ring-blue-500/40 transition-all placeholder:text-slate-500" placeholder="VD: CNTT K64 - Lớp 01" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="block text-[11px] font-medium text-slate-400 mb-1" for="quick-class-subject">Môn học *</label>
+                            <select id="quick-class-subject" class="w-full px-3 py-2 bg-[#0b1222] rounded-xl text-white text-xs outline-none focus:bg-[#101b33] focus:ring-2 focus:ring-blue-500/40 transition-all cursor-pointer" required>
+                                <option value="">Đang tải môn học...</option>
+                            </select>
+                        </div>
+                        <div class="p-2.5 bg-blue-600/10 rounded-2xl mb-4 text-[11px] text-slate-300 leading-relaxed">
+                            Sau khi tạo lớp, bạn có thể tạo ngay buổi học mới và thêm sinh viên vào danh sách.
+                        </div>
+                        <div class="mt-auto pt-3 flex gap-2">
+                            <button type="button" class="flex-1 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 text-xs font-semibold transition-all cursor-pointer" onclick="cameraCtrl.closeSlideDrawer()">Hủy</button>
+                            <button type="submit" id="btn-submit-class" class="flex-1 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold shadow-lg shadow-blue-600/30 transition-all cursor-pointer">Tạo lớp</button>
+                        </div>
+                    </form>
+                </div>
+
+            </div>
+        </aside>
+    </main>
+
+    <!-- Modal Quick Auth: Zero Border & Glassmorphism -->
+    <div class="modal-backdrop fixed inset-0 bg-black/80 backdrop-blur-xl items-center justify-center z-50 p-5" id="modal-quick-auth">
+        <div class="bg-[#070d1c]/95 rounded-3xl w-full max-w-[380px] p-6 shadow-2xl">
+            <div class="flex justify-between items-center mb-3">
+                <h3 class="text-base font-bold text-white tracking-tight">Xác thực Giảng viên</h3>
+                <button class="text-slate-400 hover:text-white text-xl leading-none cursor-pointer" onclick="closeModal('modal-quick-auth')">&times;</button>
+            </div>
+            <p class="text-xs text-slate-400 mb-4 leading-relaxed">
+                Vui lòng nhập mã giảng viên để thực hiện thao tác quản lý.
+            </p>
+            <form id="form-quick-auth">
+                <div class="mb-5">
+                    <label class="block text-xs font-medium text-slate-400 mb-1" for="quick-auth-code">Mã giảng viên</label>
+                    <input type="password" id="quick-auth-code" class="w-full px-3.5 py-2.5 bg-[#0e172a] rounded-xl text-white text-sm outline-none focus:bg-[#152340] focus:ring-2 focus:ring-blue-500/40 transition-all" placeholder="Mặc định: gv123" required autofocus>
+                </div>
+                <div class="flex justify-end gap-2">
+                    <button type="button" class="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 text-xs font-semibold" onclick="closeModal('modal-quick-auth')">Hủy</button>
+                    <button type="submit" class="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold shadow-lg shadow-blue-600/30">Xác nhận</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Toast container -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <script src="/js/ui-components.js?v=6.0"></script>
+    <script src="/js/api.js?v=6.0"></script>
+    <script src="/js/camera.js?v=8.0"></script>
+</body>
+</html>

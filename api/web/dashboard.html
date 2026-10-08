@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bảng Điều khiển Giảng viên - FaceAttendance</title>
+    <meta name="description" content="Quản lý môn học, lớp học, sinh viên, đăng ký khuôn mặt và sổ điểm danh">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <style type="text/tailwindcss">
+        @import "tailwindcss";
+
+        :root {
+            font-family: 'Poppins', sans-serif;
+            --text-dim: #64748b;
+            --text-muted: #94a3b8;
+            --font-mono: 'JetBrains Mono', monospace;
+            --primary: #2563eb;
+            --accent-emerald: #10b981;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0 4px;
+        }
+
+        th {
+            padding: 12px 18px;
+            font-size: 0.72rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #94a3b8;
+        }
+
+        td {
+            padding: 14px 18px;
+            font-size: 0.85rem;
+            vertical-align: middle;
+            color: #e2e8f0;
+        }
+
+        tbody tr {
+            transition: all 0.18s ease;
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 14px;
+        }
+
+        tbody tr:hover {
+            background: rgba(37, 99, 235, 0.08);
+        }
+
+        .class-subject-drawer td {
+            padding: 10px 18px 18px 18px;
+            background: rgba(37, 99, 235, 0.04);
+        }
+
+        .tab-pane { display: none; }
+        .tab-pane.active { display: block; animation: fadeIn 0.2s ease; }
+        .sub-pane { display: none; }
+        .sub-pane.active { display: block; animation: fadeIn 0.2s ease; }
+        .class-subject-drawer { display: none; }
+        .class-subject-drawer.active { display: table-row; }
+        .modal-backdrop { display: none; }
+        .modal-backdrop.active { display: flex; }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(4px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .toast-container {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            z-index: 9999;
+            pointer-events: none;
+        }
+        .toast {
+            padding: 12px 18px;
+            border-radius: 14px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            box-shadow: 0 12px 30px -5px rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(16px);
+            color: #fff;
+            pointer-events: auto;
+        }
+        .toast.toast-success { background: rgba(6, 78, 59, 0.95); }
+        .toast.toast-error { background: rgba(136, 19, 55, 0.95); }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            padding: 8px 14px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            border-radius: 12px;
+            transition: all 0.18s ease;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+        .btn-primary { background: #2563eb; color: #fff; box-shadow: 0 6px 20px -4px rgba(37, 99, 235, 0.4); }
+        .btn-primary:hover { background: #1d4ed8; }
+        .btn-secondary { background: rgba(255, 255, 255, 0.05); color: #e2e8f0; }
+        .btn-secondary:hover { background: rgba(255, 255, 255, 0.1); }
+        .btn-danger { background: rgba(244, 63, 94, 0.15); color: #fda4af; }
+        .btn-danger:hover { background: rgba(244, 63, 94, 0.25); color: #fff; }
+        .btn-success { background: rgba(16, 185, 129, 0.15); color: #6ee7b7; }
+        .btn-success:hover { background: rgba(16, 185, 129, 0.25); color: #fff; }
+        .btn-sm { padding: 4px 10px; font-size: 0.75rem; border-radius: 10px; white-space: nowrap; }
+
+        .badge { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; font-size: 0.72rem; font-weight: 600; border-radius: 9999px; }
+        .badge-dot { width: 6px; height: 6px; border-radius: 50%; }
+        .badge-success { background: rgba(16, 185, 129, 0.15); color: #34d399; }
+        .badge-success .badge-dot { background: #34d399; }
+        .badge-neutral { background: rgba(148, 163, 184, 0.12); color: #cbd5e1; }
+        .badge-neutral .badge-dot { background: #94a3b8; }
+        .badge-danger { background: rgba(244, 63, 94, 0.15); color: #fb7185; }
+        .badge-danger .badge-dot { background: #fb7185; }
+
+        .attendance-progress { display: flex; flex-direction: column; gap: 4px; min-width: 120px; }
+        .attendance-progress-text { display: flex; justify-content: space-between; font-size: 0.75rem; font-family: 'JetBrains Mono', monospace; }
+        .progress-track { width: 100%; height: 6px; background: rgba(255, 255, 255, 0.08); border-radius: 999px; overflow: hidden; }
+        .progress-fill { height: 100%; background: linear-gradient(90deg, #2563eb 0%, #06b6d4 100%); border-radius: 999px; transition: width 0.3s ease; }
+
+        .class-badge-link { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; background: rgba(37, 99, 235, 0.15); border-radius: 10px; color: #93c5fd; font-size: 0.8rem; cursor: pointer; transition: all 0.18s ease; }
+        .class-badge-link:hover { background: #2563eb; color: #fff; }
+
+        .row-actions { display: inline-flex; gap: 6px; opacity: 0; transition: opacity 0.15s ease; pointer-events: none; }
+        tr:hover .row-actions { opacity: 1; pointer-events: auto; }
+        tbody tr { transition: background 0.15s ease; }
+        tbody tr:hover { background: rgba(255, 255, 255, 0.03); }
+    </style>
+</head>
+<body class="bg-[#04060a] text-slate-100 min-h-screen font-sans bg-[radial-gradient(ellipse_80%_60%_at_50%_-10%,rgba(37,99,235,0.18),transparent)] antialiased">
+
+    <!-- Top Navigation Header -->
+    <header class="sticky top-0 z-50 py-3.5 bg-[#070c18]/90 backdrop-blur-2xl shadow-lg shadow-black/40">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-600/30">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M3 7V5a2 2 0 0 1 2-2h2"></path>
+                        <path d="M17 3h2a2 2 0 0 1 2 2v2"></path>
+                        <path d="M21 17v2a2 2 0 0 1-2 2h-2"></path>
+                        <path d="M7 21H5a2 2 0 0 1-2-2v-2"></path>
+                        <circle cx="12" cy="12" r="3"></circle>
+                    </svg>
+                </div>
+                <div>
+                    <span class="text-base font-bold tracking-tight text-white">FaceAttendance</span>
+                    <span class="text-[11px] text-blue-400 font-bold uppercase ml-1.5 tracking-wider">Portal</span>
+                </div>
+            </div>
+
+            <!-- 2 Root Tabs: Lớp học & Môn học -->
+            <nav class="flex gap-1 bg-[#0b1222] p-1 rounded-2xl shadow-inner">
+                <a href="#classes" class="nav-tab active inline-flex items-center gap-2 px-4 py-1.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white transition-all [&.active]:bg-blue-600 [&.active]:text-white [&.active]:shadow-lg [&.active]:shadow-blue-600/30" data-tab="classes" onclick="dashboard.switchMainTab('classes'); return false;">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                        <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+                    </svg>
+                    Lớp học
+                </a>
+                <a href="#subjects" class="nav-tab inline-flex items-center gap-2 px-4 py-1.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white transition-all [&.active]:bg-blue-600 [&.active]:text-white [&.active]:shadow-lg [&.active]:shadow-blue-600/30" data-tab="subjects" onclick="dashboard.switchMainTab('subjects'); return false;">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                        <line x1="16" y1="2" x2="16" y2="6"></line>
+                        <line x1="8" y1="2" x2="8" y2="6"></line>
+                        <line x1="3" y1="10" x2="21" y2="10"></line>
+                    </svg>
+                    Môn học
+                </a>
+            </nav>
+
+            <div class="flex items-center gap-2">
+                <a href="/" target="_blank" class="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold rounded-xl bg-white/5 hover:bg-white/10 text-slate-200 transition-all" title="Mở trang quét camera điểm danh">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                        <circle cx="12" cy="13" r="4"></circle>
+                    </svg>
+                    Màn hình Camera
+                </a>
+                <button id="btn-logout" class="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded-xl bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 transition-all cursor-pointer">
+                    Đăng xuất
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Workspace -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 pt-6 pb-16">
+
+        <!-- TAB 1: LỚP HỌC (CLASSES & DETAILS) -->
+        <section id="tab-classes" class="tab-pane active">
+
+            <!-- LEVEL 1: DANH SÁCH LỚP HỌC (OVERVIEW & STATS) -->
+            <div id="view-classes-list">
+                <!-- Stats Overview Grid -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 mb-6">
+                    <div class="bg-[#080e1e]/85 backdrop-blur-2xl rounded-3xl p-5 flex items-center justify-between hover:bg-[#0c142b]/85 transition-all shadow-xl">
+                        <div>
+                            <div class="text-3xl font-extrabold text-white tracking-tight" id="stat-total-classes">0</div>
+                            <div class="text-xs text-slate-400 font-medium mt-1">Lớp học phụ trách</div>
+                        </div>
+                        <div class="w-12 h-12 rounded-2xl flex items-center justify-center bg-blue-600/15 text-blue-400">
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                                <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+                            </svg>
+                        </div>
+                    </div>
+
+                    <div class="bg-[#080e1e]/85 backdrop-blur-2xl rounded-3xl p-5 flex items-center justify-between hover:bg-[#0c142b]/85 transition-all shadow-xl">
+                        <div>
+                            <div class="text-3xl font-extrabold text-white tracking-tight" id="stat-total-students">0</div>
+                            <div class="text-xs text-slate-400 font-medium mt-1">Tổng số sinh viên</div>
+                        </div>
+                        <div class="w-12 h-12 rounded-2xl flex items-center justify-center bg-cyan-500/15 text-cyan-400">
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                                <circle cx="9" cy="7" r="4"></circle>
+                                <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                            </svg>
+                        </div>
+                    </div>
+
+                    <div class="bg-[#080e1e]/85 backdrop-blur-2xl rounded-3xl p-5 flex items-center justify-between hover:bg-[#0c142b]/85 transition-all shadow-xl">
+                        <div>
+                            <div class="text-3xl font-extrabold text-white tracking-tight" id="stat-face-rate">0%</div>
+                            <div class="text-xs text-slate-400 font-medium mt-1" id="stat-face-detail">0/0 đã có mặt</div>
+                        </div>
+                        <div class="w-12 h-12 rounded-2xl flex items-center justify-center bg-emerald-500/15 text-emerald-400">
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M9 12l2 2 4-4"></path>
+                                <circle cx="12" cy="12" r="10"></circle>
+                            </svg>
+                        </div>
+                    </div>
+
+                    <div class="bg-[#080e1e]/85 backdrop-blur-2xl rounded-3xl p-5 flex items-center justify-between hover:bg-[#0c142b]/85 transition-all shadow-xl">
+                        <div>
+                            <div class="text-3xl font-extrabold text-white tracking-tight" id="stat-open-lessons">0</div>
+                            <div class="text-xs text-slate-400 font-medium mt-1">Buổi học đang mở</div>
+                        </div>
+                        <div class="w-12 h-12 rounded-2xl flex items-center justify-center bg-amber-500/15 text-amber-400">
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <polyline points="12 6 12 12 16 14"></polyline>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Classes Table Toolbar -->
+                <div class="flex flex-wrap items-center justify-between gap-3 mb-3.5">
+                    <div>
+                        <h2 class="text-lg font-bold text-white tracking-tight">Danh sách Lớp giảng dạy</h2>
+                        <p class="text-xs text-slate-400 mt-0.5">Bấm vào bất kỳ lớp nào để quản lý buổi học, điểm danh và sinh viên</p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <input type="text" id="filter-class-search" class="w-52 px-3.5 py-2 bg-[#0b1222] rounded-xl text-white text-xs outline-none focus:bg-[#101b33] focus:ring-2 focus:ring-blue-500/40 transition-all placeholder:text-slate-500" placeholder="Tìm tên lớp hoặc môn..." oninput="dashboard.filterClassesTable()">
+                        <select id="filter-class-subject" class="px-3.5 py-2 bg-[#0b1222] rounded-xl text-white text-xs outline-none focus:bg-[#101b33] focus:ring-2 focus:ring-blue-500/40 transition-all cursor-pointer" onchange="dashboard.filterClassesTable()">
+                            <option value="" class="bg-[#070c18] text-white">Tất cả môn học</option>
+                        </select>
+                        <button class="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-xl bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-600/30 transition-all cursor-pointer whitespace-nowrap" onclick="dashboard.openModal('modal-add-class')">
+                            + Thêm lớp học
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Classes Table Card -->
+                <div class="bg-[#080e1e]/85 backdrop-blur-2xl rounded-3xl p-2 shadow-xl overflow-hidden">
+                    <div class="w-full overflow-x-auto rounded-2xl">
+                        <table class="w-full text-left text-sm text-slate-200">
+                            <thead>
+                                <tr class="bg-white/[0.03]">
+                                    <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-slate-400 w-[70px]">ID</th>
+                                    <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-slate-400">Tên Lớp học</th>
+                                    <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-slate-400">Môn học</th>
+                                    <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-slate-400">Sĩ số SV</th>
+                                    <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-slate-400">Khuôn mặt</th>
+                                    <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-slate-400">Buổi học</th>
+                                    <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-slate-400 text-right w-[190px]">Thao tác</th>
+                                </tr>
+                            </thead>
+                            <tbody id="class-tbody">
+                                <tr><td colspan="7" class="px-4 py-8 text-center text-slate-500">Đang tải danh sách lớp...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- LEVEL 2: CHI TIẾT MỘT LỚP HỌC (MASTER-DETAIL VIEW) -->
+            <div id="view-class-detail" style="display: none;">
+                <!-- Breadcrumb Bar -->
+                <div class="flex items-center gap-2 mb-4">
+                    <button class="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-400 hover:text-white px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 transition-all cursor-pointer" onclick="dashboard.backToClassesList()">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="19" y1="12" x2="5" y2="12"></line>
+                            <polyline points="12 19 5 12 12 5"></polyline>
+                        </svg>
+                        Danh sách lớp học
+                    </button>
+                    <span class="text-slate-600 text-sm">/</span>
+                    <span class="text-sm font-bold text-blue-400" id="detail-class-breadcrumb">Chi tiết Lớp</span>
+                </div>
+
+                <!-- Class Detail Hero Banner -->
+                <div class="bg-gradient-to-r from-[#080e1e] to-[#0d1c3a] rounded-3xl p-6 mb-5 flex flex-wrap justify-between items-center gap-4 shadow-xl">
+                    <div>
+                        <div class="flex items-center gap-2.5 mb-1.5">
+                            <h2 id="detail-class-name" class="text-2xl font-extrabold text-white tracking-tight">Tên Lớp</h2>
+                            <span id="detail-class-subject" class="badge badge-neutral font-mono text-xs">Mã môn</span>
+                        </div>
+                        <p class="text-xs text-slate-400" id="detail-class-subtext">Quản lý các buổi học, điểm danh và danh sách sinh viên của lớp</p>
+                    </div>
+                    <div class="flex items-center gap-3.5 flex-wrap">
+                        <button class="btn btn-success font-bold" onclick="dashboard.startTodayAttendance(dashboard.currentClass?.id)">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                            Điểm danh hôm nay
+                        </button>
+                        <div class="text-right pl-3">
+                            <div class="text-xl font-extrabold text-white" id="detail-stat-students">0 SV</div>
+                            <div class="text-xs text-slate-400" id="detail-stat-faces">0 đã có mặt</div>
+                        </div>
+                        <div class="text-right pl-3">
+                            <div class="text-xl font-extrabold text-blue-400" id="detail-stat-lessons">0 buổi</div>
+                            <div class="text-xs text-slate-400">Tổng số buổi học</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Subnav Tabs: Buổi học vs Sinh viên -->
+                <div class="flex gap-2 mb-4">
+                    <button class="subnav-tab active flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:text-white bg-[#0b1222] transition-all cursor-pointer [&.active]:bg-blue-600 [&.active]:text-white [&.active]:shadow-lg [&.active]:shadow-blue-600/30" data-subtab="lessons" onclick="dashboard.switchSubTab('lessons')">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                            <line x1="16" y1="2" x2="16" y2="6"></line>
+                            <line x1="8" y1="2" x2="8" y2="6"></line>
+                            <line x1="3" y1="10" x2="21" y2="10"></line>
+                        </svg>
+                        Buổi học & Điểm danh
+                        <span class="badge badge-neutral font-mono text-[10px]" id="badge-count-lessons">0</span>
+                    </button>
+                    <button class="subnav-tab flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:text-white bg-[#0b1222] transition-all cursor-pointer [&.active]:bg-blue-600 [&.active]:text-white [&.active]:shadow-lg [&.active]:shadow-blue-600/30" data-subtab="students" onclick="dashboard.switchSubTab('students')">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="9" cy="7" r="4"></circle>
+                        </svg>
+                        Danh sách Sinh viên & Khuôn mặt
+                        <span class="badge badge-neutral font-mono text-[10px]" id="badge-count-students">0</span>
+                    </button>
+                </div>
+
+                <!-- SUB-PANE 1: BUỔI HỌC CỦA LỚP NÀY -->
+                <div id="subpane-lessons" class="sub-pane active">
+                    <div class="flex flex-wrap items-center justify-between gap-3 mb-3.5">
+                        <div>
+                            <h3 class="text-base font-bold text-white tracking-tight">Danh sách Buổi học & Tiến độ Điểm danh</h3>
+                            <p class="text-xs text-slate-400 mt-0.5">Theo dõi tỉ lệ sinh viên có mặt từng buổi học theo chuẩn XX/YY</p>
+                        </div>
+                        <button class="btn btn-primary" onclick="dashboard.openModal('modal-add-lesson')">
+                            + Tạo buổi học mới
+                        </button>
+                    </div>
+
+                    <div class="bg-[#080e1e]/85 backdrop-blur-2xl rounded-3xl p-2 shadow-xl overflow-hidden">
+                        <div class="w-full overflow-x-auto rounded-2xl">
+                            <table class="w-full text-left text-sm text-slate-200">
+                                <thead>
+                                    <tr class="bg-white/[0.03]">
+                                        <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-slate-400 w-[70px]">ID</th>
+                                        <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-slate-400">Ngày học</th>
+                                        <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-slate-400">Khung giờ</th>
+                                        <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-slate-400 w-[130px]">Trạng thái</th>
+                                        <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-slate-400 w-[200px]">Tiến độ Điểm danh</th>
+                                        <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-slate-400 w-[200px]">Sổ Điểm danh</th>
+                                        <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-slate-400 text-right w-[90px]">Thao tác</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="detail-lesson-tbody">
+                                    <tr><td colspan="7" class="px-4 py-8 text-center text-slate-500">Đang tải buổi học...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SUB-PANE 2: SINH VIÊN CỦA LỚP NÀY -->
+                <div id="subpane-students" class="sub-pane">
+                    <div class="flex flex-wrap items-center justify-between gap-3 mb-3.5">
+                        <div>
+                            <h3 class="text-base font-bold text-white tracking-tight">Hồ sơ Sinh viên Lớp</h3>
+                            <p class="text-xs text-slate-400 mt-0.5">Đăng ký nhận diện khuôn mặt qua webcam hoặc tải file danh sách CSV</p>
+                        </div>
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <div class="flex gap-1 bg-[#0b1222] p-1 rounded-xl">
+                                <button class="filter-pill active px-3 py-1 text-xs font-semibold rounded-lg text-slate-400 hover:text-white transition-all [&.active]:bg-white/10 [&.active]:text-white cursor-pointer" data-filter="all" onclick="dashboard.filterStudents('all')">Tất cả</button>
+                                <button class="filter-pill px-3 py-1 text-xs font-semibold rounded-lg text-slate-400 hover:text-white transition-all [&.active]:bg-white/10 [&.active]:text-white cursor-pointer" data-filter="has_face" onclick="dashboard.filterStudents('has_face')">Đã có mặt</button>
+                                <button class="filter-pill px-3 py-1 text-xs font-semibold rounded-lg text-slate-400 hover:text-white transition-all [&.active]:bg-white/10 [&.active]:text-white cursor-pointer" data-filter="no_face" onclick="dashboard.filterStudents('no_face')">Chưa có mặt</button>
+                            </div>
+                            <input type="text" id="filter-student-search" class="w-40 px-3.5 py-1.5 bg-[#0b1222] rounded-xl text-white text-xs outline-none focus:bg-[#101b33] focus:ring-2 focus:ring-blue-500/40 transition-all placeholder:text-slate-500" placeholder="Tìm MSSV, Tên..." oninput="dashboard.renderStudentsTable()">
+                            <button class="btn btn-secondary btn-sm" onclick="dashboard.openModal('modal-import-csv')">
+                                Import CSV
+                            </button>
+                            <button class="btn btn-primary btn-sm" onclick="dashboard.openModal('modal-add-student')">
+                                + Thêm sinh viên
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="bg-[#080e1e]/85 backdrop-blur-2xl rounded-3xl p-2 shadow-xl overflow-hidden">
+                        <div class="w-full overflow-x-auto rounded-2xl">
+                            <table class="w-full text-left text-sm text-slate-200">
+                                <thead>
+                                    <tr class="bg-white/[0.03]">
+                                        <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-slate-400 w-[70px]">ID</th>
+                                        <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-slate-400 w-[130px]">MSSV</th>
+                                        <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-slate-400">Họ và Tên</th>
+                                        <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-slate-400 w-[140px]">Khuôn mặt</th>
+                                        <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-slate-400 w-[170px]">Ngày đăng ký</th>
+                                        <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-slate-400 text-right w-[220px]">Hành động</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="detail-student-tbody">
+                                    <tr><td colspan="6" class="px-4 py-8 text-center text-slate-500">Đang tải danh sách sinh viên...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+        </section>
+
+        <!-- TAB 2: MÔN HỌC (SUBJECTS & REVERSE LOOKUP) -->
+        <section id="tab-subjects" class="tab-pane">
+            <div class="flex flex-wrap items-center justify-between gap-3 mb-3.5">
+                <div>
+                    <h2 class="text-lg font-bold text-white tracking-tight">Danh mục Môn học</h2>
+                    <p class="text-xs text-slate-400 mt-0.5">Quản lý danh sách các môn giảng dạy và truy xuất ngược các lớp thuộc môn</p>
+                </div>
+                <div class="flex items-center gap-2">
+                    <input type="text" id="filter-subject-search" class="w-52 px-3.5 py-2 bg-[#0b1222] rounded-xl text-white text-xs outline-none focus:bg-[#101b33] focus:ring-2 focus:ring-blue-500/40 transition-all placeholder:text-slate-500" placeholder="Tìm mã hoặc tên môn..." oninput="dashboard.filterSubjectsTable()">
+                    <button class="btn btn-primary" onclick="dashboard.openModal('modal-add-subject')">
+                        + Thêm môn học
+                    </button>
+                </div>
+            </div>
+
+            <div class="bg-[#080e1e]/85 backdrop-blur-2xl rounded-3xl p-2 shadow-xl overflow-hidden">
+                <div class="w-full overflow-x-auto rounded-2xl">
+                    <table class="w-full text-left text-sm text-slate-200">
+                        <thead>
+                            <tr class="bg-white/[0.03]">
+                                <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-slate-400 w-[70px]">ID</th>
+                                <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-slate-400 w-[160px]">Mã môn học</th>
+                                <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-slate-400">Tên môn học</th>
+                                <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-slate-400 w-[150px]">Số lớp đang mở</th>
+                                <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-slate-400 text-right w-[220px]">Hành động</th>
+                            </tr>
+                        </thead>
+                        <tbody id="subject-tbody">
+                            <tr><td colspan="5" class="px-4 py-8 text-center text-slate-500">Đang tải danh mục môn học...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- ==================== MODALS (ZERO BORDER & GLASSMORPHISM) ==================== -->
+
+    <!-- Modal: Thêm Môn học -->
+    <div id="modal-add-subject" class="modal-backdrop fixed inset-0 bg-black/80 backdrop-blur-xl items-center justify-center z-50 p-5">
+        <div class="bg-[#070d1c]/95 rounded-3xl w-full max-w-[460px] p-6 shadow-2xl">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-base font-bold text-white tracking-tight">Thêm Môn học Mới</h3>
+                <button class="text-slate-400 hover:text-white text-xl leading-none cursor-pointer" onclick="dashboard.closeModal('modal-add-subject')">&times;</button>
+            </div>
+            <div class="mb-3">
+                <label class="block text-xs font-medium text-slate-400 mb-1" for="new-subject-code">Mã môn học</label>
+                <input type="text" id="new-subject-code" class="w-full px-3.5 py-2.5 bg-[#0e172a] rounded-xl text-white text-sm outline-none focus:bg-[#152340] focus:ring-2 focus:ring-blue-500/40 transition-all placeholder:text-slate-500" placeholder="Ví dụ: INT101">
+            </div>
+            <div class="mb-5">
+                <label class="block text-xs font-medium text-slate-400 mb-1" for="new-subject-name">Tên môn học</label>
+                <input type="text" id="new-subject-name" class="w-full px-3.5 py-2.5 bg-[#0e172a] rounded-xl text-white text-sm outline-none focus:bg-[#152340] focus:ring-2 focus:ring-blue-500/40 transition-all placeholder:text-slate-500" placeholder="Ví dụ: Lập trình C++">
+            </div>
+            <div class="flex justify-end gap-2">
+                <button class="btn btn-secondary" onclick="dashboard.closeModal('modal-add-subject')">Hủy</button>
+                <button class="btn btn-primary" onclick="dashboard.createSubject()">Tạo môn học</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Thêm Lớp học -->
+    <div id="modal-add-class" class="modal-backdrop fixed inset-0 bg-black/80 backdrop-blur-xl items-center justify-center z-50 p-5">
+        <div class="bg-[#070d1c]/95 rounded-3xl w-full max-w-[500px] p-6 shadow-2xl">
+            <div class="flex items-center justify-between mb-4">
+                <div>
+                    <h3 class="text-base font-bold text-white tracking-tight">Tạo Lớp học Mới</h3>
+                    <p class="text-xs text-slate-400 mt-0.5">Tạo lớp, chọn môn và nạp danh sách SV</p>
+                </div>
+                <button class="text-slate-400 hover:text-white text-xl leading-none cursor-pointer" onclick="dashboard.closeModal('modal-add-class')">&times;</button>
+            </div>
+            <div class="mb-3">
+                <label class="block text-xs font-medium text-slate-400 mb-1" for="new-class-name">Tên lớp học</label>
+                <input type="text" id="new-class-name" class="w-full px-3.5 py-2.5 bg-[#0e172a] rounded-xl text-white text-sm outline-none focus:bg-[#152340] focus:ring-2 focus:ring-blue-500/40 transition-all placeholder:text-slate-500" placeholder="Ví dụ: K15-CNTT1">
+            </div>
+            <div class="mb-3">
+                <div class="flex justify-between items-center mb-1">
+                    <label class="text-xs font-medium text-slate-400" for="new-class-subject">Môn học</label>
+                    <button type="button" class="btn btn-secondary btn-sm text-[11px]" onclick="dashboard.toggleQuickSubjectInClassModal()">
+                        + Thêm môn mới
+                    </button>
+                </div>
+                <select id="new-class-subject" class="w-full px-3.5 py-2.5 bg-[#0e172a] rounded-xl text-white text-sm outline-none focus:bg-[#152340] focus:ring-2 focus:ring-blue-500/40 transition-all cursor-pointer"></select>
+
+                <div id="quick-subject-box" class="hidden mt-2 p-3 bg-white/5 rounded-2xl">
+                    <div class="text-xs font-bold text-blue-400 mb-2">Tạo nhanh môn học:</div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <input type="text" id="quick-sub-code" class="px-3 py-2 bg-[#0e172a] rounded-xl text-white text-xs outline-none focus:bg-[#152340] transition-all" placeholder="Mã môn (VD: IT101)">
+                        <input type="text" id="quick-sub-name" class="px-3 py-2 bg-[#0e172a] rounded-xl text-white text-xs outline-none focus:bg-[#152340] transition-all" placeholder="Tên môn (VD: Lập trình Go)">
+                    </div>
+                </div>
+            </div>
+            <div class="mb-5">
+                <label class="block text-xs font-medium text-slate-400 mb-1" for="new-class-students-paste">
+                    Danh sách sinh viên ban đầu <span class="text-slate-500">(Tùy chọn)</span>
+                </label>
+                <textarea id="new-class-students-paste" class="w-full px-3.5 py-2.5 bg-[#0e172a] rounded-xl text-white text-xs font-mono outline-none focus:bg-[#152340] focus:ring-2 focus:ring-blue-500/40 transition-all placeholder:text-slate-500" rows="3" placeholder="20210001, Nguyễn Văn A&#10;20210002, Trần Thị B"></textarea>
+            </div>
+            <div class="flex justify-end gap-2">
+                <button class="btn btn-secondary" onclick="dashboard.closeModal('modal-add-class')">Hủy</button>
+                <button class="btn btn-primary" onclick="dashboard.createClass()">Tạo lớp học</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Thêm Sinh viên -->
+    <div id="modal-add-student" class="modal-backdrop fixed inset-0 bg-black/80 backdrop-blur-xl items-center justify-center z-50 p-5">
+        <div class="bg-[#070d1c]/95 rounded-3xl w-full max-w-[460px] p-6 shadow-2xl">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-base font-bold text-white tracking-tight">Thêm Sinh viên vào Lớp</h3>
+                <button class="text-slate-400 hover:text-white text-xl leading-none cursor-pointer" onclick="dashboard.closeModal('modal-add-student')">&times;</button>
+            </div>
+            <div class="mb-3">
+                <label class="block text-xs font-medium text-slate-400 mb-1" for="new-student-mssv">Mã số sinh viên (MSSV)</label>
+                <input type="text" id="new-student-mssv" class="w-full px-3.5 py-2.5 bg-[#0e172a] rounded-xl text-white text-sm outline-none focus:bg-[#152340] focus:ring-2 focus:ring-blue-500/40 transition-all placeholder:text-slate-500" placeholder="Ví dụ: 2021001">
+            </div>
+            <div class="mb-5">
+                <label class="block text-xs font-medium text-slate-400 mb-1" for="new-student-name">Họ và Tên</label>
+                <input type="text" id="new-student-name" class="w-full px-3.5 py-2.5 bg-[#0e172a] rounded-xl text-white text-sm outline-none focus:bg-[#152340] focus:ring-2 focus:ring-blue-500/40 transition-all placeholder:text-slate-500" placeholder="Ví dụ: Nguyễn Văn A">
+            </div>
+            <div class="flex justify-end gap-2">
+                <button class="btn btn-secondary" onclick="dashboard.closeModal('modal-add-student')">Hủy</button>
+                <button class="btn btn-primary" onclick="dashboard.createStudent()">Lưu sinh viên</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Import CSV -->
+    <div id="modal-import-csv" class="modal-backdrop fixed inset-0 bg-black/80 backdrop-blur-xl items-center justify-center z-50 p-5">
+        <div class="bg-[#070d1c]/95 rounded-3xl w-full max-w-[560px] p-6 shadow-2xl">
+            <div class="flex items-center justify-between mb-4">
+                <div>
+                    <h3 class="text-base font-bold text-white tracking-tight">Nạp Danh sách Sinh viên</h3>
+                    <p class="text-xs text-slate-400 mt-0.5" id="import-csv-class-name">Nạp danh sách lớp nhanh</p>
+                </div>
+                <button class="text-slate-400 hover:text-white text-xl leading-none cursor-pointer" onclick="dashboard.closeModal('modal-import-csv')">&times;</button>
+            </div>
+
+            <div class="flex gap-2 mb-3">
+                <button id="tab-btn-paste" class="btn btn-primary btn-sm" onclick="dashboard.switchImportMode('paste')">
+                    Dán text
+                </button>
+                <button id="tab-btn-file" class="btn btn-secondary btn-sm" onclick="dashboard.switchImportMode('file')">
+                    Tải file CSV
+                </button>
+            </div>
+
+            <div id="import-mode-paste">
+                <div class="mb-3">
+                    <label class="block text-xs font-medium text-slate-400 mb-1" for="csv-paste-textarea">Dán danh sách MSSV và Họ tên</label>
+                    <textarea id="csv-paste-textarea" class="w-full px-3.5 py-2.5 bg-[#0e172a] rounded-xl text-white text-xs font-mono outline-none focus:bg-[#152340] focus:ring-2 focus:ring-blue-500/40 transition-all placeholder:text-slate-500" rows="5" placeholder="2021001&#9;Nguyễn Văn A&#10;2021002&#9;Trần Thị B" oninput="dashboard.handlePasteInput(this.value)"></textarea>
+                </div>
+            </div>
+
+            <div id="import-mode-file" style="display: none;">
+                <div id="csv-dropzone" class="rounded-2xl p-6 text-center bg-white/[0.03] hover:bg-white/[0.06] cursor-pointer transition-all" onclick="document.getElementById('csv-file-input').click()">
+                    <div class="w-10 h-10 mx-auto mb-2 rounded-xl bg-blue-600/15 flex items-center justify-center text-blue-400">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                        </svg>
+                    </div>
+                    <div class="font-bold text-xs text-white mb-0.5">Chọn hoặc kéo file CSV vào đây</div>
+                    <div class="text-[11px] text-slate-500">Định dạng: MSSV, Họ và tên</div>
+                    <input type="file" id="csv-file-input" accept=".csv,text/csv,text/plain" style="display: none;" onchange="dashboard.handleCSVFile(this.files[0])">
+                </div>
+            </div>
+
+            <div id="csv-preview-container" class="hidden mt-3">
+                <div class="flex justify-between items-center mb-1.5">
+                    <span class="text-xs font-bold text-emerald-400" id="csv-preview-count">Đã đọc 0 sinh viên</span>
+                    <button class="btn btn-secondary btn-sm" onclick="dashboard.resetCSVImport()">Xóa / Làm lại</button>
+                </div>
+                <div class="max-h-40 overflow-y-auto rounded-xl bg-[#0e172a]">
+                    <table class="w-full text-left text-xs text-slate-200">
+                        <thead>
+                            <tr class="bg-white/5 text-slate-400">
+                                <th class="p-2 w-10">STT</th>
+                                <th class="p-2 w-32">MSSV</th>
+                                <th class="p-2">Họ và Tên</th>
+                            </tr>
+                        </thead>
+                        <tbody id="csv-preview-tbody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="flex justify-end gap-2 mt-5">
+                <button class="btn btn-secondary" onclick="dashboard.closeModal('modal-import-csv')">Hủy</button>
+                <button id="btn-submit-csv" class="btn btn-primary disabled:opacity-40 disabled:cursor-not-allowed" disabled onclick="dashboard.executeCSVImport()">Import</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Tạo Buổi học -->
+    <div id="modal-add-lesson" class="modal-backdrop fixed inset-0 bg-black/80 backdrop-blur-xl items-center justify-center z-50 p-5">
+        <div class="bg-[#070d1c]/95 rounded-3xl w-full max-w-[460px] p-6 shadow-2xl">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-base font-bold text-white tracking-tight">Tạo Buổi học Mới</h3>
+                <button class="text-slate-400 hover:text-white text-xl leading-none cursor-pointer" onclick="dashboard.closeModal('modal-add-lesson')">&times;</button>
+            </div>
+            <div class="mb-3">
+                <label class="block text-xs font-medium text-slate-400 mb-1" for="new-lesson-date">Ngày học</label>
+                <input type="date" id="new-lesson-date" class="w-full px-3.5 py-2.5 bg-[#0e172a] rounded-xl text-white text-sm outline-none focus:bg-[#152340] focus:ring-2 focus:ring-blue-500/40 transition-all cursor-pointer">
+            </div>
+            <div class="grid grid-cols-2 gap-2.5 mb-5">
+                <div>
+                    <label class="block text-xs font-medium text-slate-400 mb-1" for="new-lesson-start">Giờ bắt đầu</label>
+                    <input type="time" id="new-lesson-start" class="w-full px-3.5 py-2.5 bg-[#0e172a] rounded-xl text-white text-sm outline-none focus:bg-[#152340] focus:ring-2 focus:ring-blue-500/40 transition-all cursor-pointer" value="08:00">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-400 mb-1" for="new-lesson-end">Giờ kết thúc</label>
+                    <input type="time" id="new-lesson-end" class="w-full px-3.5 py-2.5 bg-[#0e172a] rounded-xl text-white text-sm outline-none focus:bg-[#152340] focus:ring-2 focus:ring-blue-500/40 transition-all cursor-pointer" value="11:30">
+                </div>
+            </div>
+            <div class="flex justify-end gap-2">
+                <button class="btn btn-secondary" onclick="dashboard.closeModal('modal-add-lesson')">Hủy</button>
+                <button class="btn btn-primary" onclick="dashboard.createLesson()">Tạo buổi học</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Đăng ký Khuôn mặt -->
+    <div id="modal-face-reg" class="modal-backdrop fixed inset-0 bg-black/80 backdrop-blur-xl items-center justify-center z-50 p-5">
+        <div class="bg-[#070d1c]/95 rounded-3xl w-full max-w-[520px] p-6 shadow-2xl">
+            <div class="flex items-center justify-between mb-3">
+                <div>
+                    <h3 class="text-base font-bold text-white tracking-tight">Đăng ký Khuôn mặt</h3>
+                    <p class="text-xs text-blue-400 font-bold" id="face-modal-sv-name">Sinh viên</p>
+                </div>
+                <button class="text-slate-400 hover:text-white text-xl leading-none cursor-pointer" onclick="dashboard.closeFaceModal()">&times;</button>
+            </div>
+
+            <div class="w-full aspect-[4/3] bg-black rounded-2xl overflow-hidden relative mb-3 shadow-inner">
+                <video id="reg-video" autoplay playsinline muted class="w-full h-full object-cover -scale-x-100"></video>
+                <canvas id="reg-canvas" style="display: none;"></canvas>
+            </div>
+
+            <p id="face-modal-status" class="text-xs text-slate-400 text-center mb-4">
+                Đang mở camera...
+            </p>
+
+            <div class="flex justify-end items-center gap-2">
+                <button class="btn btn-secondary btn-sm" onclick="dashboard.closeFaceModal()">Đóng</button>
+                <button class="btn btn-primary" onclick="dashboard.captureFacePhoto()">Chụp & Lưu mặt</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Sổ Điểm danh Chi tiết -->
+    <div id="modal-attendance" class="modal-backdrop fixed inset-0 bg-black/80 backdrop-blur-xl items-center justify-center z-50 p-5">
+        <div class="bg-[#070d1c]/95 rounded-3xl w-full max-w-[800px] p-6 shadow-2xl">
+            <div class="flex items-center justify-between mb-4">
+                <div>
+                    <h3 class="text-base font-bold text-white tracking-tight" id="att-modal-title">Sổ Điểm danh</h3>
+                    <p class="text-xs text-slate-400 mt-0.5">Trạng thái điểm danh sinh viên trong buổi học</p>
+                </div>
+                <div class="flex items-center gap-2">
+                    <a id="btn-export-csv" href="#" class="btn btn-success btn-sm" download>
+                        Xuất file CSV
+                    </a>
+                    <button class="text-slate-400 hover:text-white text-xl leading-none cursor-pointer" onclick="dashboard.closeModal('modal-attendance')">&times;</button>
+                </div>
+            </div>
+
+            <div class="max-h-[420px] overflow-y-auto rounded-2xl bg-[#0e172a]">
+                <table class="w-full text-left text-sm text-slate-200">
+                    <thead>
+                        <tr class="bg-white/5 text-slate-400">
+                            <th class="p-3 w-32">MSSV</th>
+                            <th class="p-3">Họ và Tên</th>
+                            <th class="p-3 w-32">Trạng thái</th>
+                            <th class="p-3 w-28">Thời gian</th>
+                            <th class="p-3 w-36">Độ khớp</th>
+                            <th class="p-3 w-40 text-right">Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody id="attendance-tbody">
+                        <tr><td colspan="6" class="p-8 text-center text-slate-500">Đang tải dữ liệu...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast container -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <script src="/js/ui-components.js?v=5.4"></script>
+    <script src="/js/api.js?v=5.4"></script>
+    <script src="/js/dashboard.js?v=5.4"></script>
+    <script>
+        const today = new Date().toISOString().split('T')[0];
+        const dateInput = document.getElementById('new-lesson-date');
+        if (dateInput && !dateInput.value) dateInput.value = today;
+    </script>
+</body>
+</html>
