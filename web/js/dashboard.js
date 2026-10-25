@@ -692,6 +692,10 @@ class DashboardController {
                             <button class="btn btn-primary btn-sm" onclick="dashboard.openAttendanceModal(${l.id}, '${l.ngay}')">
                                 Sổ điểm danh
                             </button>
+                            <a href="${API.getExportCSVUrl(l.id)}" class="btn btn-secondary btn-sm" download title="Xuất file CSV buổi học này" style="display: inline-flex; align-items: center; gap: 4px;">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                                <span>Xuất CSV</span>
+                            </a>
                         </div>
                     </td>
                     <td style="text-align: right; white-space: nowrap;">
