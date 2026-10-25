@@ -465,7 +465,15 @@ class CameraController {
                 const end = document.getElementById('quick-lesson-end').value;
                 const openNow = document.getElementById('quick-lesson-open-now').checked;
 
-                if (!classID) { showToast('Vui lòng chọn lớp học', 'warning'); return; }
+                if (!classID) {
+                    showToast('Chưa chọn lớp học. Vui lòng tạo hoặc chọn lớp học trước', 'warning');
+                    this.switchDrawerTab('class');
+                    return;
+                }
+                if (!ngay) {
+                    showToast('Vui lòng chọn ngày học', 'warning');
+                    return;
+                }
                 try {
                     const newLesson = await API.createLesson(classID, ngay, start, end);
                     const lessonID = newLesson ? (newLesson.buoi_hoc_id || newLesson.id) : null;
@@ -856,13 +864,16 @@ class CameraController {
             const classes = await API.listClasses();
             sel.innerHTML = '';
             const noClassAlert = document.getElementById('no-classes-alert');
+            const noLessonClassAlert = document.getElementById('no-lesson-class-alert');
             if (!classes || classes.length === 0) {
                 sel.innerHTML = '<option value="">Chưa có lớp nào</option>';
                 if (noClassAlert && selectId === 'quick-student-class') noClassAlert.style.display = 'flex';
+                if (noLessonClassAlert && selectId === 'quick-lesson-class') noLessonClassAlert.style.display = 'flex';
                 if (sel._customDropdown) sel._customDropdown.renderOptions();
                 return [];
             }
             if (noClassAlert && selectId === 'quick-student-class') noClassAlert.style.display = 'none';
+            if (noLessonClassAlert && selectId === 'quick-lesson-class') noLessonClassAlert.style.display = 'none';
             classes.forEach((c) => {
                 const opt = document.createElement('option');
                 opt.value = c.id;

@@ -677,7 +677,7 @@
 
                         <div class="mb-3">
                             <label class="block text-[10px] font-semibold uppercase tracking-wider text-zinc-400 mb-1" for="quick-student-class">Chọn lớp học *</label>
-                            <select id="quick-student-class" class="w-full px-3 py-1.5 bg-white/[0.04] border border-white/10 rounded-lg text-white text-xs outline-none focus:border-[#9dbcff]/50 transition duration-150 cursor-pointer" required>
+                            <select id="quick-student-class" class="w-full px-3 py-1.5 bg-white/[0.04] border border-white/10 rounded-lg text-white text-xs outline-none focus:border-[#9dbcff]/50 transition duration-150 cursor-pointer">
                                 <option value="">Đang tải lớp học...</option>
                             </select>
                         </div>
@@ -767,16 +767,23 @@
 
                 <!-- PANE 2: FORM TẠO BUỔI HỌC -->
                 <div id="drawer-pane-lesson" class="flex-1 flex flex-col overflow-y-auto min-h-0" style="display: none;">
-                    <form id="drawer-form-lesson" class="flex flex-col flex-1">
+                    <form id="drawer-form-lesson" class="flex flex-col flex-1" novalidate>
+                        <div id="no-lesson-class-alert" class="p-2.5 bg-amber-500/10 border border-amber-500/20 rounded-xl mb-3 flex items-center justify-between gap-2" style="display: none;">
+                            <div class="min-w-0">
+                                <p class="text-xs font-semibold text-amber-300">Chưa có lớp học</p>
+                                <p class="text-[11px] font-normal text-zinc-400">Vui lòng tạo lớp học trước</p>
+                            </div>
+                            <button type="button" class="btn btn-primary px-2.5 py-1 rounded-lg text-xs font-semibold shrink-0 cursor-pointer" onclick="cameraCtrl.switchDrawerTab('class')">Tạo lớp</button>
+                        </div>
                         <div class="mb-3">
                             <label class="block text-[10px] font-semibold uppercase tracking-wider text-zinc-400 mb-1" for="quick-lesson-class">Chọn lớp học *</label>
-                            <select id="quick-lesson-class" class="w-full px-3 py-1.5 bg-white/[0.04] border border-white/10 rounded-lg text-white text-xs outline-none focus:border-[#9dbcff]/50 transition duration-150 cursor-pointer" required>
+                            <select id="quick-lesson-class" class="w-full px-3 py-1.5 bg-white/[0.04] border border-white/10 rounded-lg text-white text-xs outline-none focus:border-[#9dbcff]/50 transition duration-150 cursor-pointer">
                                 <option value="">Đang tải lớp học...</option>
                             </select>
                         </div>
                         <div class="mb-3">
                             <label class="block text-[10px] font-semibold uppercase tracking-wider text-zinc-400 mb-1" for="quick-lesson-date">Ngày học *</label>
-                            <input type="date" id="quick-lesson-date" class="w-full px-3 py-1.5 bg-white/[0.04] border border-white/10 rounded-lg text-white text-xs outline-none focus:border-[#9dbcff]/50 transition duration-150 cursor-pointer" required>
+                            <input type="date" id="quick-lesson-date" class="w-full px-3 py-1.5 bg-white/[0.04] border border-white/10 rounded-lg text-white text-xs outline-none focus:border-[#9dbcff]/50 transition duration-150 cursor-pointer">
                         </div>
                         <div class="grid grid-cols-2 gap-2 mb-2">
                             <div>
@@ -809,7 +816,7 @@
 
                 <!-- PANE 3: FORM TẠO LỚP HỌC -->
                 <div id="drawer-pane-class" class="flex-1 flex flex-col overflow-y-auto min-h-0" style="display: none;">
-                    <form id="drawer-form-class" class="flex flex-col flex-1">
+                    <form id="drawer-form-class" class="flex flex-col flex-1" novalidate>
                         <div id="no-subject-alert" class="p-2.5 bg-amber-500/10 rounded-xl mb-3 flex items-center justify-between gap-2" style="display: none;">
                             <div class="min-w-0">
                                 <p class="text-xs font-semibold text-amber-300">Chưa có môn học</p>
@@ -819,11 +826,11 @@
                         </div>
                         <div class="mb-3">
                             <label class="block text-[10px] font-semibold uppercase tracking-wider text-zinc-400 mb-1" for="quick-class-name">Tên lớp học *</label>
-                            <input type="text" id="quick-class-name" class="w-full px-3 py-1.5 bg-white/[0.04] border border-white/10 rounded-lg text-white text-xs outline-none focus:border-[#9dbcff]/50 transition duration-150 placeholder:text-zinc-600" placeholder="VD: CNTT K64 - Lớp 01" required>
+                            <input type="text" id="quick-class-name" class="w-full px-3 py-1.5 bg-white/[0.04] border border-white/10 rounded-lg text-white text-xs outline-none focus:border-[#9dbcff]/50 transition duration-150 placeholder:text-zinc-600" placeholder="VD: CNTT K64 - Lớp 01">
                         </div>
                         <div class="mb-3">
                             <label class="block text-[10px] font-semibold uppercase tracking-wider text-zinc-400 mb-1" for="quick-class-subject">Môn học *</label>
-                            <select id="quick-class-subject" class="w-full px-3 py-1.5 bg-white/[0.04] border border-white/10 rounded-lg text-white text-xs outline-none focus:border-[#9dbcff]/50 transition duration-150 cursor-pointer" required>
+                            <select id="quick-class-subject" class="w-full px-3 py-1.5 bg-white/[0.04] border border-white/10 rounded-lg text-white text-xs outline-none focus:border-[#9dbcff]/50 transition duration-150 cursor-pointer">
                                 <option value="">Đang tải môn học...</option>
                             </select>
                         </div>
