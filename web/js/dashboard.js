@@ -189,7 +189,7 @@ class DashboardController {
 
     async deleteSubject(id) {
         const sub = (this.subjects || []).find((s) => s.id === id);
-        const subName = sub ? `${sub.ma_mon} - ${sub.ten_mon}` : `Môn #${id}`;
+        const subName = sub ? `${sub.ma_mon} - ${sub.ten || sub.ten_mon || ''}` : `Môn #${id}`;
         const ok = await showConfirm({
             title: 'Xóa môn học',
             message: 'Bạn có chắc chắn muốn xóa môn học này? Thao tác này sẽ gỡ môn học khỏi hệ thống.',
@@ -531,9 +531,9 @@ class DashboardController {
 
     async deleteClass(id) {
         const c = (this.classes || []).find((item) => item.id === id);
-        const className = c ? c.ten_lop : `Lớp #${id}`;
+        const className = c ? (c.ten || c.ten_lop || `Lớp #${id}`) : `Lớp #${id}`;
         const subName = c ? (c.ten_mon ? `${c.ma_mon || ''} - ${c.ten_mon}` : '') : '';
-        const stats = c ? `${c.so_sv || 0} sinh viên · ${c.tong_buoi || 0} buổi học` : '';
+        const stats = c ? `${c.total_students || c.so_sv || 0} sinh viên · ${c.total_lessons || c.tong_buoi || 0} buổi học` : '';
 
         const ok = await showConfirm({
             title: 'Xóa lớp học',
