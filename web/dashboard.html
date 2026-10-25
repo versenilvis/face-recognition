@@ -685,11 +685,15 @@
                         </div>
                         <p class="text-xs text-zinc-400" id="detail-class-subtext">Quản lý các buổi học, điểm danh và danh sách sinh viên của lớp</p>
                     </div>
-                    <div class="flex items-center gap-4 flex-wrap">
+                    <div class="flex items-center gap-3 flex-wrap">
                         <button class="btn btn-success font-semibold" onclick="dashboard.startTodayAttendance(dashboard.currentClass?.id)">
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
                             <span>Điểm danh hôm nay</span>
                         </button>
+                        <a id="hero-btn-export-class-csv" href="#" class="btn btn-secondary font-semibold" download title="Xuất toàn bộ bảng điểm danh của lớp này" style="display: inline-flex; align-items: center; gap: 6px;">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                            <span>Xuất CSV tổng</span>
+                        </a>
                         <div class="text-right pl-3">
                             <div class="text-base font-bold text-white leading-none tabular-nums" id="detail-stat-students">0 SV</div>
                             <div class="text-[10px] font-medium text-zinc-400 mt-1" id="detail-stat-faces">0 có mặt</div>
@@ -733,9 +737,15 @@
                                 </h3>
                                 <p class="text-xs text-zinc-400">Theo dõi tỉ lệ sinh viên có mặt từng buổi học</p>
                             </div>
-                            <button class="btn btn-primary" onclick="dashboard.openModal('modal-add-lesson')">
-                                + Tạo buổi học mới
-                            </button>
+                            <div class="flex items-center gap-2">
+                                <a id="btn-export-class-csv" href="#" class="btn btn-secondary" download title="Xuất toàn bộ bảng điểm danh của lớp này" style="display: inline-flex; align-items: center; gap: 6px;">
+                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                                    <span>Xuất CSV tổng</span>
+                                </a>
+                                <button class="btn btn-primary" onclick="dashboard.openModal('modal-add-lesson')">
+                                    + Tạo buổi học mới
+                                </button>
+                            </div>
                         </div>
 
                         <div class="w-full overflow-x-auto rounded-xl">

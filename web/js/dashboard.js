@@ -579,6 +579,16 @@ class DashboardController {
         document.getElementById('detail-class-subtext').textContent = `Quản lý buổi học, điểm danh và danh sách sinh viên của lớp ${this.currentClass.ten}`;
         document.getElementById('import-csv-class-name').textContent = `Import danh sách sinh viên cho lớp: ${this.currentClass.ten}`;
 
+        const exportClassUrl = API.getClassExportCSVUrl(classId);
+        const exportTotalBtn = document.getElementById('btn-export-class-csv');
+        if (exportTotalBtn) {
+            exportTotalBtn.href = exportClassUrl;
+        }
+        const heroExportTotalBtn = document.getElementById('hero-btn-export-class-csv');
+        if (heroExportTotalBtn) {
+            heroExportTotalBtn.href = exportClassUrl;
+        }
+
         // toggle view visibility
         document.getElementById('view-classes-list').style.display = 'none';
         document.getElementById('view-class-detail').style.display = 'block';

@@ -72,3 +72,114 @@ func (r *Repo) Cancel(ctx context.Context, buoiID, svID int) (int64, error) {
 	}
 	return res.RowsAffected()
 }
+
+type ClassAttendanceExport struct {
+	ClassName   string
+	SubjectCode string
+	SubjectName string
+	Lessons     []LessonExportItem
+	Students    []StudentExportItem
+	Attendance  map[int]map[int]bool
+}
+
+type LessonExportItem struct {
+	ID   int
+	Ngay string
+}
+
+type StudentExportItem struct {
+	ID    int
+	MSSV  string
+	HoTen string
+}
+
+func (r *Repo) GetClassAttendanceExport(ctx context.Context, classID int) (*ClassAttendanceExport, error) {
+	export := &ClassAttendanceExport{
+		Lessons:    []LessonExportItem{},
+		Students:   []StudentExportItem{},
+		Attendance: make(map[int]map[int]bool),
+	}
+
+	// lay thong tin lop
+	err := r.db.Read.QueryRowContext(ctx, `
+		select lh.ten, coalesce(mh.ma_mon, ''), coalesce(mh.ten, '')
+		from lop_hoc lh
+		left join mon_hoc mh on lh.mon_hoc_id = mh.id
+		where lh.id = ?
+	`, classID).Scan(&export.ClassName, &export.SubjectCode, &export.SubjectName)
+	if err != nil {
+		return nil, err
+	}
+
+	// lay danh sach buoi hoc cua lop
+	lRows, err := r.db.Read.QueryContext(ctx, `
+		select id, ngay
+		from buoi_hoc
+		where lop_hoc_id = ?
+		order by ngay asc, bat_dau asc, id asc
+	`, classID)
+	if err != nil {
+		return nil, err
+	}
+	defer lRows.Close()
+
+	for lRows.Next() {
+		var l LessonExportItem
+		if err := lRows.Scan(&l.ID, &l.Ngay); err != nil {
+			return nil, err
+		}
+		export.Lessons = append(export.Lessons, l)
+	}
+	if err := lRows.Err(); err != nil {
+		return nil, err
+	}
+
+	// lay danh sach sinh vien thuoc lop
+	sRows, err := r.db.Read.QueryContext(ctx, `
+		select id, mssv, ho_ten
+		from sinh_vien
+		where lop_hoc_id = ?
+		order by mssv asc
+	`, classID)
+	if err != nil {
+		return nil, err
+	}
+	defer sRows.Close()
+
+	for sRows.Next() {
+		var s StudentExportItem
+		if err := sRows.Scan(&s.ID, &s.MSSV, &s.HoTen); err != nil {
+			return nil, err
+		}
+		export.Students = append(export.Students, s)
+	}
+	if err := sRows.Err(); err != nil {
+		return nil, err
+	}
+
+	// lay tat ca ban ghi diem danh cua cac buoi hoc thuoc lop
+	aRows, err := r.db.Read.QueryContext(ctx, `
+		select dd.sinh_vien_id, dd.buoi_hoc_id
+		from diem_danh dd
+		join buoi_hoc bh on dd.buoi_hoc_id = bh.id
+		where bh.lop_hoc_id = ?
+	`, classID)
+	if err != nil {
+		return nil, err
+	}
+	defer aRows.Close()
+
+	for aRows.Next() {
+		var svID, bID int
+		if err := aRows.Scan(&svID, &bID); err != nil {
+			return nil, err
+		}
+		if export.Attendance[svID] == nil {
+			export.Attendance[svID] = make(map[int]bool)
+		}
+		export.Attendance[svID][bID] = true
+	}
+
+	return export, aRows.Err()
+}
+

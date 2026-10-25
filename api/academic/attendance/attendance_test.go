@@ -54,6 +54,7 @@ func setupAttendanceTest(t *testing.T) (*fiber.App, *http.Cookie) {
 	protected.Post("/buoi-hoc/:id/diem-danh/:sv_id", attHandler.ManualCheckin)
 	protected.Delete("/buoi-hoc/:id/diem-danh/:sv_id", attHandler.ManualCancel)
 	protected.Get("/buoi-hoc/:id/export", attHandler.ExportCSV)
+	protected.Get("/lop-hoc/:id/export", attHandler.ExportClassCSV)
 
 	token, err := auth.GenerateToken()
 	if err != nil {
@@ -127,6 +128,20 @@ func TestAttendanceFlow(t *testing.T) {
 	}
 	if !strings.Contains(respExport.Header.Get("Content-Type"), "text/csv") {
 		t.Errorf("expected text/csv, got: %s", respExport.Header.Get("Content-Type"))
+	}
+
+	// 3b. export class csv tong
+	exportClassReq := httptest.NewRequest("GET", "/protected/lop-hoc/1/export", nil)
+	exportClassReq.AddCookie(cookie)
+	respExportClass, err := app.Test(exportClassReq)
+	if err != nil {
+		t.Fatalf("request failed: %v", err)
+	}
+	if respExportClass.StatusCode != http.StatusOK {
+		t.Errorf("expected 200, got: %d", respExportClass.StatusCode)
+	}
+	if !strings.Contains(respExportClass.Header.Get("Content-Type"), "text/csv") {
+		t.Errorf("expected text/csv, got: %s", respExportClass.Header.Get("Content-Type"))
 	}
 
 	// 4. huy diem danh thu cong

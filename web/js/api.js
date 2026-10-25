@@ -163,6 +163,10 @@ const API = {
         return `/protected/buoi-hoc/${lessonID}/export`;
     },
 
+    getClassExportCSVUrl(classID) {
+        return `/protected/lop-hoc/${classID}/export`;
+    },
+
     // Face Recognition
     async registerFace(svID, imageBlob, override = false) {
         const formData = new FormData();

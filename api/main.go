@@ -147,6 +147,7 @@ func main() {
 	protected.Post("/buoi-hoc/:id/diem-danh/:sv_id", attendanceHandler.ManualCheckin)
 	protected.Delete("/buoi-hoc/:id/diem-danh/:sv_id", attendanceHandler.ManualCancel)
 	protected.Get("/buoi-hoc/:id/export", attendanceHandler.ExportCSV)
+	protected.Get("/lop-hoc/:id/export", attendanceHandler.ExportClassCSV)
 
 	// face
 	protected.Post("/sinh-vien/:id/face", faceHandler.RegisterFace)

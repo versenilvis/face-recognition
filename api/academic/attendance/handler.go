@@ -87,6 +87,7 @@ func (h *Handler) ExportCSV(c fiber.Ctx) error {
 	}
 
 	var buf bytes.Buffer
+	buf.Write([]byte{0xEF, 0xBB, 0xBF})
 	writer := csv.NewWriter(&buf)
 	_ = writer.Write([]string{"MSSV", "Ho Ten", "Trang Thai", "Thoi Gian", "Phuong Thuc"})
 
@@ -107,7 +108,59 @@ func (h *Handler) ExportCSV(c fiber.Ctx) error {
 	}
 	writer.Flush()
 
-	c.Set("Content-Type", "text/csv")
+	c.Set("Content-Type", "text/csv; charset=utf-8")
 	c.Set("Content-Disposition", fmt.Sprintf("attachment; filename=diem_danh_buoi_%d.csv", buoiHocID))
+	return c.Send(buf.Bytes())
+}
+
+func (h *Handler) ExportClassCSV(c fiber.Ctx) error {
+	classID, err := strconv.Atoi(c.Params("id"))
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid class id"})
+	}
+
+	data, err := h.repo.GetClassAttendanceExport(c.Context(), classID)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "db error"})
+	}
+
+	var buf bytes.Buffer
+	buf.Write([]byte{0xEF, 0xBB, 0xBF})
+	writer := csv.NewWriter(&buf)
+
+	headers := []string{"MSSV", "Ho Ten"}
+	for i, l := range data.Lessons {
+		headers = append(headers, fmt.Sprintf("Buoi %d (%s)", i+1, l.Ngay))
+	}
+	headers = append(headers, "Tong co mat", "Tong vang", "Ti le (%)")
+	_ = writer.Write(headers)
+
+	totalLessons := len(data.Lessons)
+	for _, sv := range data.Students {
+		row := []string{sv.MSSV, sv.HoTen}
+		presentCount := 0
+
+		for _, l := range data.Lessons {
+			if data.Attendance[sv.ID] != nil && data.Attendance[sv.ID][l.ID] {
+				row = append(row, "Co mat")
+				presentCount++
+			} else {
+				row = append(row, "Vang")
+			}
+		}
+
+		absentCount := totalLessons - presentCount
+		percent := "0.0%"
+		if totalLessons > 0 {
+			percent = fmt.Sprintf("%.1f%%", float64(presentCount)*100.0/float64(totalLessons))
+		}
+
+		row = append(row, strconv.Itoa(presentCount), strconv.Itoa(absentCount), percent)
+		_ = writer.Write(row)
+	}
+	writer.Flush()
+
+	c.Set("Content-Type", "text/csv; charset=utf-8")
+	c.Set("Content-Disposition", fmt.Sprintf("attachment; filename=diem_danh_tong_lop_%d.csv", classID))
 	return c.Send(buf.Bytes())
 }
