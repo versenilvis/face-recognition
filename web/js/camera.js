@@ -314,16 +314,25 @@ class CameraController {
         if (this.finishLessonBtn) {
             this.finishLessonBtn.addEventListener('click', async () => {
                 if (!this.currentLesson || !this.currentLesson.id) return;
-                if (confirm('Xác nhận kết thúc buổi học này? Hệ thống sẽ đóng buổi và chuyển về trang quản lý.')) {
-                    try {
-                        await API.updateLessonStatus(this.currentLesson.id, 'closed');
-                        showToast('Đã kết thúc buổi học', 'success');
-                        setTimeout(() => {
-                            window.location.href = '/dashboard.html';
-                        }, 400);
-                    } catch (err) {
-                        showToast(err.message || 'Lỗi đóng buổi học', 'error');
-                    }
+                const lessonTitle = this.currentLesson.ten_lop ? `Lớp ${this.currentLesson.ten_lop}` : `Buổi #${this.currentLesson.id}`;
+                const ok = await showConfirm({
+                    title: 'Kết thúc ca điểm danh',
+                    message: 'Xác nhận kết thúc buổi học này? Hệ thống sẽ đóng ca điểm danh và chuyển về trang quản lý.',
+                    itemText: lessonTitle,
+                    itemSubtext: this.currentLesson.ngay ? `Ngày ${this.currentLesson.ngay}` : '',
+                    confirmText: 'Kết thúc buổi',
+                    type: 'warning'
+                });
+                if (!ok) return;
+
+                try {
+                    await API.updateLessonStatus(this.currentLesson.id, 'closed');
+                    showToast('Đã kết thúc buổi học', 'success');
+                    setTimeout(() => {
+                        window.location.href = '/dashboard.html';
+                    }, 400);
+                } catch (err) {
+                    showToast(err.message || 'Lỗi đóng buổi học', 'error');
                 }
             });
         }

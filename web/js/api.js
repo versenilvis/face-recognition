@@ -217,6 +217,139 @@ function showToast(message, type = 'info') {
     }, 3500);
 }
 
+// custom promise-based confirmation dialog
+function showConfirm({
+    title = 'Xác nhận thao tác',
+    message = 'Bạn có chắc chắn muốn thực hiện thao tác này?',
+    itemText = '',
+    itemSubtext = '',
+    confirmText = 'Xác nhận xóa',
+    cancelText = 'Hủy',
+    type = 'danger',
+} = {}) {
+    return new Promise((resolve) => {
+        const oldModal = document.getElementById('custom-confirm-modal');
+        if (oldModal) oldModal.remove();
+
+        const isDanger = type === 'danger';
+        const isWarning = type === 'warning';
+
+        const confirmBtnClass = isDanger ? 'btn btn-danger' : (isWarning ? 'btn btn-primary' : 'btn btn-primary');
+
+        const modal = document.createElement('div');
+        modal.id = 'custom-confirm-modal';
+        modal.className = 'confirm-dialog-backdrop';
+        modal.style.cssText = `
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.78);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+            padding: 16px;
+            opacity: 0;
+            transition: opacity 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+        `;
+
+        const itemPreviewHtml = itemText ? `
+            <div style="display: flex; flex-direction: column; padding: 10px 14px; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.07); border-radius: 12px; margin: 12px 0 16px 0;">
+                <span style="font-size: 13px; font-weight: 600; color: #f4f4f5; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${itemText}</span>
+                ${itemSubtext ? `<span style="font-size: 11px; color: #a1a1aa; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px;">${itemSubtext}</span>` : ''}
+            </div>
+        ` : '';
+
+        modal.innerHTML = `
+            <div class="confirm-dialog-card" style="
+                background: linear-gradient(180deg, rgba(17, 24, 39, 0.98) 0%, rgba(10, 13, 22, 0.98) 100%);
+                border: 1px solid rgba(255, 255, 255, 0.09);
+                border-radius: 20px;
+                padding: 24px;
+                max-width: 420px;
+                width: 100%;
+                box-shadow: 0 24px 60px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+                transform: scale(0.92) translateY(8px);
+                transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+                box-sizing: border-box;
+                position: relative;
+            ">
+                <div style="margin-bottom: 14px;">
+                    <h3 style="font-size: 16px; font-weight: 700; color: #ffffff; margin: 0 0 6px 0; letter-spacing: -0.01em;">${title}</h3>
+                    <p style="font-size: 13px; color: #94a3b8; line-height: 1.55; margin: 0;">${message}</p>
+                </div>
+
+                ${itemPreviewHtml}
+
+                <div style="display: flex; align-items: center; justify-content: flex-end; gap: 10px; margin-top: 8px;">
+                    <button id="confirm-modal-cancel" class="btn btn-secondary" style="height: 36px; padding: 0 16px; border-radius: 10px; font-size: 13px; font-weight: 600; cursor: pointer;">
+                        ${cancelText}
+                    </button>
+                    <button id="confirm-modal-ok" class="${confirmBtnClass}" style="height: 36px; padding: 0 18px; border-radius: 10px; font-size: 13px; font-weight: 600; cursor: pointer;">
+                        ${confirmText}
+                    </button>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+
+        requestAnimationFrame(() => {
+            modal.style.opacity = '1';
+            const card = modal.querySelector('.confirm-dialog-card');
+            if (card) card.style.transform = 'scale(1) translateY(0)';
+        });
+
+        const close = (result) => {
+            modal.style.opacity = '0';
+            const card = modal.querySelector('.confirm-dialog-card');
+            if (card) card.style.transform = 'scale(0.95) translateY(4px)';
+            cleanup();
+            setTimeout(() => {
+                if (modal.parentNode) modal.parentNode.removeChild(modal);
+                resolve(result);
+            }, 180);
+        };
+
+        const onKeyDown = (e) => {
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                close(false);
+            } else if (e.key === 'Enter') {
+                e.preventDefault();
+                close(true);
+            }
+        };
+
+        const onBackdropClick = (e) => {
+            if (e.target === modal) {
+                close(false);
+            }
+        };
+
+        const cleanup = () => {
+            document.removeEventListener('keydown', onKeyDown);
+            modal.removeEventListener('click', onBackdropClick);
+        };
+
+        document.addEventListener('keydown', onKeyDown);
+        modal.addEventListener('click', onBackdropClick);
+
+        const btnCancel = modal.querySelector('#confirm-modal-cancel');
+        const btnOk = modal.querySelector('#confirm-modal-ok');
+
+        if (btnCancel) {
+            btnCancel.addEventListener('click', () => close(false));
+            btnCancel.focus();
+        }
+        if (btnOk) {
+            btnOk.addEventListener('click', () => close(true));
+        }
+    });
+}
+window.showConfirm = showConfirm;
+
 // vietnam timezone helper
 window.VNTime = {
     // get current YYYY-MM-DD in Vietnam timezone

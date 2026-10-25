@@ -188,7 +188,17 @@ class DashboardController {
     }
 
     async deleteSubject(id) {
-        if (!confirm('Bạn có chắc chắn muốn xóa môn học này?')) return;
+        const sub = (this.subjects || []).find((s) => s.id === id);
+        const subName = sub ? `${sub.ma_mon} - ${sub.ten_mon}` : `Môn #${id}`;
+        const ok = await showConfirm({
+            title: 'Xóa môn học',
+            message: 'Bạn có chắc chắn muốn xóa môn học này? Thao tác này sẽ gỡ môn học khỏi hệ thống.',
+            itemText: subName,
+            confirmText: 'Xóa môn học',
+            type: 'danger'
+        });
+        if (!ok) return;
+
         try {
             await API.deleteSubject(id);
             showToast('Đã xóa môn học', 'success');
@@ -520,10 +530,24 @@ class DashboardController {
     }
 
     async deleteClass(id) {
-        if (!confirm('Xóa lớp học sẽ xóa toàn bộ sinh viên, dữ liệu khuôn mặt và buổi học của lớp?')) return;
+        const c = (this.classes || []).find((item) => item.id === id);
+        const className = c ? c.ten_lop : `Lớp #${id}`;
+        const subName = c ? (c.ten_mon ? `${c.ma_mon || ''} - ${c.ten_mon}` : '') : '';
+        const stats = c ? `${c.so_sv || 0} sinh viên · ${c.tong_buoi || 0} buổi học` : '';
+
+        const ok = await showConfirm({
+            title: 'Xóa lớp học',
+            message: 'Hành động này sẽ xóa vĩnh viễn lớp học cùng toàn bộ sinh viên, dữ liệu khuôn mặt và lịch sử điểm danh của lớp. Thao tác này không thể hoàn tác.',
+            itemText: className,
+            itemSubtext: subName ? `${subName} (${stats})` : stats,
+            confirmText: 'Xóa vĩnh viễn',
+            type: 'danger'
+        });
+        if (!ok) return;
+
         try {
             await API.deleteClass(id);
-            showToast('Đã xóa lớp học', 'success');
+            showToast(`Đã xóa lớp học ${className}`, 'success');
             if (this.currentClass && this.currentClass.id === id) {
                 this.backToClassesList();
             }
@@ -709,7 +733,20 @@ class DashboardController {
     }
 
     async deleteLesson(id) {
-        if (!confirm('Xác nhận xóa buổi học này?')) return;
+        const l = (this.lessons || []).find((item) => item.id === id);
+        const lessonDate = l ? `Buổi học ngày ${l.ngay}` : `Buổi học #${id}`;
+        const lessonInfo = l ? (l.ghi_chu || (l.trang_thai === 'open' ? 'Đang mở' : 'Đã đóng')) : '';
+
+        const ok = await showConfirm({
+            title: 'Xóa buổi học',
+            message: 'Bạn có chắc chắn muốn xóa buổi học này? Toàn bộ dữ liệu điểm danh của buổi học sẽ bị xóa khỏi hệ thống.',
+            itemText: lessonDate,
+            itemSubtext: lessonInfo,
+            confirmText: 'Xóa buổi học',
+            type: 'danger'
+        });
+        if (!ok) return;
+
         try {
             await API.deleteLesson(id);
             showToast('Đã xóa buổi học', 'success');
@@ -912,7 +949,17 @@ class DashboardController {
     }
 
     async deleteStudent(id) {
-        if (!confirm('Bạn có chắc muốn xóa sinh viên này khỏi lớp?')) return;
+        const sv = (this.students || []).find((item) => item.id === id);
+        const svName = sv ? `${sv.ho_ten} (${sv.mssv})` : `Sinh viên #${id}`;
+        const ok = await showConfirm({
+            title: 'Xóa sinh viên',
+            message: 'Bạn có chắc muốn xóa sinh viên này khỏi lớp? Dữ liệu điểm danh của sinh viên trong lớp sẽ bị xóa.',
+            itemText: svName,
+            confirmText: 'Xóa sinh viên',
+            type: 'danger'
+        });
+        if (!ok) return;
+
         try {
             await API.deleteStudent(id);
             showToast('Đã xóa sinh viên', 'success');
@@ -926,7 +973,17 @@ class DashboardController {
     }
 
     async deleteFace(id) {
-        if (!confirm('Xác nhận xóa vector khuôn mặt của sinh viên?')) return;
+        const sv = (this.students || []).find((item) => item.id === id);
+        const svName = sv ? `${sv.ho_ten} (${sv.mssv})` : `Sinh viên #${id}`;
+        const ok = await showConfirm({
+            title: 'Xóa dữ liệu khuôn mặt',
+            message: 'Vector đặc trưng khuôn mặt của sinh viên sẽ bị xóa. Sinh viên sẽ cần chụp ảnh đăng ký lại để điểm danh.',
+            itemText: svName,
+            confirmText: 'Xóa vector mặt',
+            type: 'danger'
+        });
+        if (!ok) return;
+
         try {
             await API.deleteFace(id);
             showToast('Đã xóa dữ liệu khuôn mặt', 'success');
@@ -1181,8 +1238,14 @@ class DashboardController {
         } catch (err) {
             if (err.data && err.data.error === 'face_conflict') {
                 const conflict = err.data.conflict_student || {};
-                const confirmMsg = `Khuôn mặt này đã được đăng ký cho ${conflict.ho_ten || 'sinh viên khác'} (${conflict.mssv}). Bạn có chắc muốn cập nhật và chuyển quyền khuôn mặt này sang cho sinh viên hiện tại không?`;
-                if (confirm(confirmMsg)) {
+                const ok = await showConfirm({
+                    title: 'Trùng lặp khuôn mặt',
+                    message: `Khuôn mặt này đã được đăng ký cho sinh viên ${conflict.ho_ten || 'khác'} (${conflict.mssv || ''}). Bạn có chắc muốn cập nhật và chuyển quyền khuôn mặt này sang cho sinh viên hiện tại không?`,
+                    itemText: `${conflict.ho_ten || 'Sinh viên'} (${conflict.mssv || ''})`,
+                    confirmText: 'Ghi đè & Chuyển quyền',
+                    type: 'warning'
+                });
+                if (ok) {
                     await this.submitFaceBlob(blob, true);
                     return;
                 }
