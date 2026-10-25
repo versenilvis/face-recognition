@@ -1132,19 +1132,30 @@
 
     <!-- Modal: Xem Khuôn mặt Sinh viên -->
     <div id="modal-view-face" class="modal-backdrop fixed inset-0 bg-black/80 backdrop-blur-md items-center justify-center z-50 p-4">
-        <div class="bg-[#0a0d16] rounded-[24px] w-full max-w-[380px] p-5 shadow-2xl text-center">
-            <div class="flex items-center justify-between mb-3 pb-2.5">
+        <div class="bg-[#0a0d16] border border-white/[0.08] rounded-[24px] w-full max-w-xl sm:max-w-2xl p-5 sm:p-6 shadow-[0_24px_60px_rgba(0,0,0,0.85)] flex flex-col">
+            <div class="flex items-center justify-between mb-3 pb-2.5 border-b border-white/[0.06]">
                 <div class="text-left">
-                    <h3 class="text-sm font-semibold text-white tracking-tight" id="view-face-title">Ảnh Khuôn mặt</h3>
-                    <p class="text-xs text-[#9dbcff] font-semibold tracking-wide" id="view-face-subtitle">Sinh viên</p>
+                    <h3 class="text-base font-bold text-white tracking-tight" id="view-face-title">Ảnh khuôn mặt mẫu</h3>
+                    <p class="text-xs text-zinc-400 mt-0.5" id="view-face-subtitle">Sinh viên</p>
                 </div>
-                <button class="text-zinc-500 hover:text-white text-lg leading-none cursor-pointer" onclick="dashboard.closeModal('modal-view-face')">&times;</button>
+                <button class="text-zinc-400 hover:text-white text-xl leading-none cursor-pointer p-1" onclick="dashboard.closeModal('modal-view-face')" title="Đóng">&times;</button>
             </div>
-            <div class="w-full aspect-[3/4] max-h-[340px] rounded-xl overflow-hidden bg-black border border-white/10 flex items-center justify-center mb-4 shadow-inner">
-                <img id="view-face-img" src="" alt="Face" class="w-full h-full object-cover">
+            <div class="w-full max-h-[68vh] min-h-[260px] rounded-xl overflow-hidden bg-black/80 border border-white/[0.08] flex items-center justify-center p-2 mb-4 relative">
+                <img id="view-face-img" src="" alt="Face" class="max-w-full max-h-[64vh] w-auto h-auto object-contain block mx-auto rounded-lg shadow-md">
             </div>
-            <div class="flex justify-end">
-                <button class="btn btn-secondary w-full" onclick="dashboard.closeModal('modal-view-face')">Đóng</button>
+            <div class="flex items-center justify-between gap-3 pt-1">
+                <span class="text-xs text-zinc-400">Khung hình gốc đối soát nhận diện</span>
+                <div class="flex items-center gap-2">
+                    <a id="view-face-open-link" href="#" target="_blank" class="btn btn-secondary text-xs h-8 px-3 rounded-lg font-medium inline-flex items-center gap-1.5" title="Mở ảnh gốc trong tab mới">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                            <polyline points="15 3 21 3 21 9"></polyline>
+                            <line x1="10" y1="14" x2="21" y2="3"></line>
+                        </svg>
+                        <span>Mở ảnh gốc</span>
+                    </a>
+                    <button class="btn btn-secondary text-xs h-8 px-4 rounded-lg font-medium" onclick="dashboard.closeModal('modal-view-face')">Đóng</button>
+                </div>
             </div>
         </div>
     </div>

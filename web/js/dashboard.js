@@ -283,10 +283,13 @@ class DashboardController {
         const titleEl = document.getElementById('view-face-title');
         const subEl = document.getElementById('view-face-subtitle');
         const img = document.getElementById('view-face-img');
+        const openLink = document.getElementById('view-face-open-link');
+        const src = `/faces/${encodeURIComponent(mssv)}.jpeg?t=${Date.now()}`;
         if (titleEl) titleEl.textContent = name;
         if (subEl) subEl.textContent = `MSSV: ${mssv}`;
+        if (openLink) openLink.href = src;
         if (img) {
-            img.src = `/faces/${encodeURIComponent(mssv)}.jpeg`;
+            img.src = src;
             img.onerror = () => {
                 showToast('Chưa có file ảnh mẫu cho sinh viên này (chỉ có vector)', 'warning');
                 this.closeModal('modal-view-face');
@@ -910,6 +913,11 @@ class DashboardController {
                     <td style="font-family: var(--font-mono); font-size: 0.82rem; color: var(--text-muted); white-space: nowrap;">${regDate}</td>
                     <td style="text-align: right; white-space: nowrap;">
                         <div class="row-actions" style="display:inline-flex; align-items:center; gap:6px; white-space:nowrap; flex-shrink:0;">
+                            ${
+                                s.has_face
+                                    ? `<button class="btn btn-secondary btn-sm" onclick="dashboard.viewFaceModal('${safeName}', '${s.mssv}')" style="white-space: nowrap;">Xem ảnh</button>`
+                                    : ''
+                            }
                             <button class="btn ${s.has_face ? 'btn-secondary' : 'btn-primary'} btn-sm" onclick="dashboard.openFaceModal(${s.id}, '${safeName}', '${s.mssv}')" style="white-space: nowrap;">
                                 ${s.has_face ? 'Chụp lại' : 'Chụp mặt'}
                             </button>
