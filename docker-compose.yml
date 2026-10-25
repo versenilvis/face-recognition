@@ -31,7 +31,7 @@ services:
             - PORT=8080
             - DB_PATH=/data/face_reg.db
             - INFER_URL=http://infer:8001
-            - JWT_SECRET=${JWT_SECRET}
+            - JWT_SECRET=${JWT_SECRET:-face_reg_jwt_secret_dev_key}
         volumes:
             - ./data:/data
             - ./web:/app/web
