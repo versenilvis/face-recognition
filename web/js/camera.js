@@ -157,7 +157,7 @@ class CameraController {
         if (this.kioskClassName) this.kioskClassName.textContent = 'Chưa mở buổi học';
         if (this.kioskLessonDate) this.kioskLessonDate.textContent = '';
         if (this.finishLessonBtn) this.finishLessonBtn.style.display = 'none';
-        if (this.sidebarSubjectTitle) this.sidebarSubjectTitle.textContent = 'Môn học';
+        if (this.sidebarSubjectTitle) this.sidebarSubjectTitle.textContent = 'Lớp học';
         if (this.sidebarClassTitle) this.sidebarClassTitle.textContent = 'Chưa chọn lớp';
         if (this.currentLessonLabel) this.currentLessonLabel.textContent = 'Chưa chọn buổi học';
         if (this.liveListEl) {
@@ -178,8 +178,13 @@ class CameraController {
     }
 
     updateHeaderLessonInfo(lesson) {
+        const hasClassPrefix = /^lớp\b/i.test((lesson.ten_lop || '').trim());
+        const displayClassName = lesson.ten_lop
+            ? (hasClassPrefix ? lesson.ten_lop.trim() : `Lớp ${lesson.ten_lop.trim()}`)
+            : `Lớp #${lesson.lop_hoc_id}`;
+
         if (this.kioskClassName) {
-            this.kioskClassName.textContent = lesson.ten_lop || `Lớp #${lesson.lop_hoc_id}`;
+            this.kioskClassName.textContent = displayClassName;
         }
         if (this.kioskLessonDate) {
             const today = window.VNTime ? window.VNTime.getTodayDate() : '';
@@ -206,10 +211,18 @@ class CameraController {
             this.finishLessonBtn.style.display = isOpen ? 'inline-flex' : 'none';
         }
         if (this.sidebarSubjectTitle) {
-            this.sidebarSubjectTitle.textContent = lesson.ten_mon || 'Môn học';
+            if (lesson.ten_mon) {
+                const subCode = lesson.ma_mon ? `${lesson.ma_mon} · ` : '';
+                this.sidebarSubjectTitle.textContent = `${subCode}${lesson.ten_mon}`;
+                this.sidebarSubjectTitle.title = `${subCode}${lesson.ten_mon}`;
+            } else {
+                this.sidebarSubjectTitle.textContent = 'Lớp học';
+                this.sidebarSubjectTitle.title = 'Lớp học';
+            }
         }
         if (this.sidebarClassTitle) {
-            this.sidebarClassTitle.textContent = lesson.ten_lop || `Lớp #${lesson.lop_hoc_id}`;
+            this.sidebarClassTitle.textContent = lesson.ten_mon ? displayClassName : (lesson.ten_lop || `Lớp #${lesson.lop_hoc_id}`);
+            this.sidebarClassTitle.title = lesson.ten_lop || '';
         }
         if (this.currentLessonLabel) {
             this.currentLessonLabel.textContent = `Buổi ngày ${lesson.ngay}`;

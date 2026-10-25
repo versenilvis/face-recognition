@@ -18,10 +18,13 @@ func NewRepo(d *db.DB) *Repo {
 
 func (r *Repo) ListByLop(ctx context.Context, lopID int) ([]BuoiHoc, error) {
 	rows, err := r.db.Read.QueryContext(ctx, `
-		select b.id, b.lop_hoc_id, b.ngay, b.bat_dau, b.ket_thuc, b.trang_thai,
+		select b.id, b.lop_hoc_id, coalesce(l.ten, ''), coalesce(m.ten, ''), coalesce(m.ma_mon, ''),
+		       b.ngay, b.bat_dau, b.ket_thuc, b.trang_thai,
 		       count(distinct dd.sinh_vien_id) as present_count,
 		       (select count(*) from sinh_vien sv where sv.lop_hoc_id = b.lop_hoc_id) as total_students
 		from buoi_hoc b
+		left join lop_hoc l on b.lop_hoc_id = l.id
+		left join mon_hoc m on l.mon_hoc_id = m.id
 		left join diem_danh dd on b.id = dd.buoi_hoc_id
 		where b.lop_hoc_id = ?
 		group by b.id
@@ -35,7 +38,7 @@ func (r *Repo) ListByLop(ctx context.Context, lopID int) ([]BuoiHoc, error) {
 	ds := []BuoiHoc{}
 	for rows.Next() {
 		var b BuoiHoc
-		if err := rows.Scan(&b.ID, &b.LopHocID, &b.Ngay, &b.BatDau, &b.KetThuc, &b.TrangThai, &b.PresentCount, &b.TotalStudents); err != nil {
+		if err := rows.Scan(&b.ID, &b.LopHocID, &b.TenLop, &b.TenMon, &b.MaMon, &b.Ngay, &b.BatDau, &b.KetThuc, &b.TrangThai, &b.PresentCount, &b.TotalStudents); err != nil {
 			return nil, err
 		}
 		ds = append(ds, b)
@@ -51,9 +54,10 @@ func (r *Repo) ListOpen(ctx context.Context) ([]BuoiHoc, error) {
 	_, _ = r.db.Write.ExecContext(ctx, "update buoi_hoc set trang_thai = 'closed' where trang_thai = 'open' and ngay < ?", today)
 
 	rows, err := r.db.Read.QueryContext(ctx, `
-		select b.id, b.lop_hoc_id, l.ten, b.ngay, b.bat_dau, b.ket_thuc, b.trang_thai
+		select b.id, b.lop_hoc_id, coalesce(l.ten, ''), coalesce(m.ten, ''), coalesce(m.ma_mon, ''), b.ngay, b.bat_dau, b.ket_thuc, b.trang_thai
 		from buoi_hoc b
 		join lop_hoc l on b.lop_hoc_id = l.id
+		left join mon_hoc m on l.mon_hoc_id = m.id
 		where b.trang_thai = 'open' and b.ngay >= ?
 		order by b.id desc
 	`, today)
@@ -65,7 +69,7 @@ func (r *Repo) ListOpen(ctx context.Context) ([]BuoiHoc, error) {
 	ds := []BuoiHoc{}
 	for rows.Next() {
 		var b BuoiHoc
-		if err := rows.Scan(&b.ID, &b.LopHocID, &b.TenLop, &b.Ngay, &b.BatDau, &b.KetThuc, &b.TrangThai); err != nil {
+		if err := rows.Scan(&b.ID, &b.LopHocID, &b.TenLop, &b.TenMon, &b.MaMon, &b.Ngay, &b.BatDau, &b.KetThuc, &b.TrangThai); err != nil {
 			return nil, err
 		}
 		ds = append(ds, b)
@@ -76,11 +80,12 @@ func (r *Repo) ListOpen(ctx context.Context) ([]BuoiHoc, error) {
 func (r *Repo) GetByID(ctx context.Context, id int) (*BuoiHoc, error) {
 	var b BuoiHoc
 	err := r.db.Read.QueryRowContext(ctx, `
-		select b.id, b.lop_hoc_id, coalesce(l.ten, ''), b.ngay, b.bat_dau, b.ket_thuc, b.trang_thai
+		select b.id, b.lop_hoc_id, coalesce(l.ten, ''), coalesce(m.ten, ''), coalesce(m.ma_mon, ''), b.ngay, b.bat_dau, b.ket_thuc, b.trang_thai
 		from buoi_hoc b
 		left join lop_hoc l on b.lop_hoc_id = l.id
+		left join mon_hoc m on l.mon_hoc_id = m.id
 		where b.id = ?
-	`, id).Scan(&b.ID, &b.LopHocID, &b.TenLop, &b.Ngay, &b.BatDau, &b.KetThuc, &b.TrangThai)
+	`, id).Scan(&b.ID, &b.LopHocID, &b.TenLop, &b.TenMon, &b.MaMon, &b.Ngay, &b.BatDau, &b.KetThuc, &b.TrangThai)
 	if err != nil {
 		return nil, err
 	}
@@ -91,12 +96,13 @@ func (r *Repo) GetOrCreateToday(ctx context.Context, lopID int) (*BuoiHoc, error
 	today := time.Now().In(vnLocation).Format("2006-01-02")
 	var b BuoiHoc
 	err := r.db.Read.QueryRowContext(ctx, `
-		select b.id, b.lop_hoc_id, coalesce(l.ten, ''), b.ngay, b.bat_dau, b.ket_thuc, b.trang_thai
+		select b.id, b.lop_hoc_id, coalesce(l.ten, ''), coalesce(m.ten, ''), coalesce(m.ma_mon, ''), b.ngay, b.bat_dau, b.ket_thuc, b.trang_thai
 		from buoi_hoc b
 		left join lop_hoc l on b.lop_hoc_id = l.id
+		left join mon_hoc m on l.mon_hoc_id = m.id
 		where b.lop_hoc_id = ? and b.ngay = ?
 		order by b.id desc limit 1
-	`, lopID, today).Scan(&b.ID, &b.LopHocID, &b.TenLop, &b.Ngay, &b.BatDau, &b.KetThuc, &b.TrangThai)
+	`, lopID, today).Scan(&b.ID, &b.LopHocID, &b.TenLop, &b.TenMon, &b.MaMon, &b.Ngay, &b.BatDau, &b.KetThuc, &b.TrangThai)
 
 	if err == nil {
 		if b.TrangThai != "open" {
