@@ -14,7 +14,7 @@
         :root {
             font-family: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
             --rh-canvas: #04060a;
-            --rh-card: #090d16;
+            --rh-card: #080b13;
             --rh-accent: #2a4690;
             --rh-accent-light: #9dbcff;
         }
@@ -64,179 +64,110 @@
         .toast.toast-info { border-color: rgba(157, 188, 255, 0.3); color: #9dbcff; }
     </style>
 </head>
-<body class="bg-[#04060a] text-zinc-100 min-h-screen antialiased flex flex-col selection:bg-[#2a4690]/40 selection:text-[#9dbcff]">
+<body class="bg-[#04060a] text-zinc-100 min-h-screen antialiased flex flex-col justify-between items-center p-6 relative selection:bg-[#2a4690]/40 selection:text-[#9dbcff]">
 
-    <div class="min-h-screen w-full flex flex-col lg:flex-row">
-
-        <!-- Left Column: Institutional context & highlights -->
-        <section class="w-full lg:w-[54%] xl:w-[56%] bg-gradient-to-b from-[#080c16] via-[#050811] to-[#04060a] p-8 sm:p-12 lg:p-16 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-white/[0.06] relative overflow-hidden">
-            <!-- Ambient glow -->
-            <div class="absolute -top-32 -left-32 w-96 h-96 bg-[radial-gradient(circle,rgba(42,70,144,0.18)_0%,transparent_70%)] pointer-events-none"></div>
-            <div class="absolute -bottom-32 right-0 w-96 h-96 bg-[radial-gradient(circle,rgba(30,58,138,0.12)_0%,transparent_70%)] pointer-events-none"></div>
-
-            <!-- Top brand header -->
-            <div class="relative z-10 flex items-center justify-between">
-                <a href="/" class="flex items-center gap-3 group">
-                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#9dbcff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="transition-transform duration-200 group-hover:scale-105">
-                        <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
-                        <circle cx="12" cy="12" r="3"/>
-                        <path d="M12 9v1m0 4v1"/>
-                    </svg>
-                    <div class="text-base font-bold tracking-tight text-white">
-                        <span>Face</span> <span class="text-[#9dbcff]">Attendance</span>
-                    </div>
-                </a>
-
-                <div class="flex items-center gap-2 text-xs text-zinc-400">
-                    <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                    <span>Kiosk trực tuyến</span>
-                </div>
-            </div>
-
-            <!-- Center editorial content -->
-            <div class="relative z-10 my-12 lg:my-auto max-w-xl">
-                <h1 class="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-white tracking-tight leading-[1.14]">
-                    Hệ thống điểm danh & quản lý đào tạo
-                </h1>
-                <p class="text-sm sm:text-base text-zinc-400 mt-4 leading-relaxed font-normal">
-                    Nền tảng xác thực sinh viên thời gian thực trên thiết bị Kiosk, tích hợp nhận diện khuôn mặt và chống gian lận đa tầng phục vụ công tác giảng dạy.
-                </p>
-
-                <!-- Clean capability rows without box containers -->
-                <div class="mt-8 space-y-5">
-                    <div class="flex items-start gap-3.5">
-                        <svg class="text-[#9dbcff] shrink-0 mt-0.5" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-                            <polyline points="22 4 12 14.01 9 11.01"/>
-                        </svg>
-                        <div>
-                            <div class="text-sm font-semibold text-white">Nhận diện tức thì & Chống giả mạo</div>
-                            <p class="text-xs text-zinc-400 mt-0.5 leading-relaxed">Thuật toán phân tích đa khung hình temporal consensus kết hợp MiniFASNet để ngăn chặn hình ảnh hay video gian lận.</p>
-                        </div>
-                    </div>
-
-                    <div class="flex items-start gap-3.5">
-                        <svg class="text-[#9dbcff] shrink-0 mt-0.5" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-                            <rect width="18" height="18" x="3" y="3" rx="2"/>
-                            <path d="M3 9h18M9 21V9"/>
-                        </svg>
-                        <div>
-                            <div class="text-sm font-semibold text-white">Quản lý lớp học & Báo cáo chuyên cần</div>
-                            <p class="text-xs text-zinc-400 mt-0.5 leading-relaxed">Theo dõi sĩ số trực tiếp, mở và kết thúc ca điểm danh, đồng bộ danh sách sinh viên tức thì.</p>
-                        </div>
-                    </div>
-
-                    <div class="flex items-start gap-3.5">
-                        <svg class="text-[#9dbcff] shrink-0 mt-0.5" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/>
-                        </svg>
-                        <div>
-                            <div class="text-sm font-semibold text-white">Bảo mật phiên làm việc giảng viên</div>
-                            <p class="text-xs text-zinc-400 mt-0.5 leading-relaxed">Xác thực bằng mã truy cập an toàn với cookie phiên mã hóa và kiểm soát phân quyền chặt chẽ.</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Bottom institutional note -->
-            <div class="relative z-10 pt-6 border-t border-white/[0.06] flex items-center justify-between text-xs text-zinc-400">
-                <span>Khoa Kỹ thuật Máy tính</span>
-                <span>Edge AI Recognition Engine</span>
-            </div>
-        </section>
-
-        <!-- Right Column: Authentication Form -->
-        <main class="w-full lg:w-[46%] xl:w-[44%] bg-[#04060a] p-8 sm:p-12 lg:p-16 flex flex-col justify-between relative">
-            <!-- Ambient top glow -->
-            <div class="absolute top-0 right-0 w-80 h-80 bg-[radial-gradient(circle,rgba(42,70,144,0.12)_0%,transparent_70%)] pointer-events-none"></div>
-
-            <!-- Top back action -->
-            <div class="relative z-10">
-                <a href="/" class="inline-flex items-center gap-2 text-xs font-semibold text-zinc-400 hover:text-white transition-colors duration-150 cursor-pointer">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="m15 18-6-6 6-6"/>
-                    </svg>
-                    <span>Quay lại camera điểm danh</span>
-                </a>
-            </div>
-
-            <!-- Form container -->
-            <div class="relative z-10 my-10 lg:my-auto max-w-sm w-full mx-auto">
-                <div class="mb-6">
-                    <span class="text-xs font-bold text-[#9dbcff] uppercase tracking-wider block mb-2">Đăng nhập tài khoản</span>
-                    <h2 class="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-                        Xác thực Giảng viên
-                    </h2>
-                    <p class="text-xs sm:text-sm text-zinc-400 mt-2 leading-relaxed">
-                        Nhập mã truy cập để đăng nhập vào bảng điều khiển và quản lý lớp học.
-                    </p>
-                </div>
-
-                <form id="login-form">
-                    <div class="mb-5">
-                        <label for="login-code" class="block text-xs font-semibold text-zinc-300 uppercase tracking-wider mb-2">
-                            Mã truy cập giảng viên
-                        </label>
-                        <div class="relative">
-                            <input 
-                                type="password" 
-                                id="login-code" 
-                                class="w-full pl-4 pr-11 py-3 bg-white/[0.04] hover:bg-white/[0.06] focus:bg-[#0c101c] border border-white/[0.1] focus:border-[#4b72db] focus:ring-2 focus:ring-[#4b72db]/25 rounded-xl text-white text-sm placeholder:text-zinc-600 outline-none transition duration-150 tracking-wide font-sans" 
-                                placeholder="Nhập mã (mặc định: gv123)" 
-                                required 
-                                autofocus
-                                autocomplete="current-password"
-                            >
-                            <button 
-                                type="button" 
-                                id="btn-toggle-code" 
-                                class="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-white transition-colors duration-150 cursor-pointer p-1"
-                                title="Hiện hoặc ẩn mã"
-                                tabindex="-1"
-                            >
-                                <svg id="eye-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/>
-                                    <circle cx="12" cy="12" r="3"/>
-                                </svg>
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- Clean inline error alert without background box -->
-                    <div id="login-error" class="hidden mb-4 flex items-center gap-2 text-rose-300 text-xs font-medium">
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="shrink-0 text-rose-400">
-                            <circle cx="12" cy="12" r="10"/>
-                            <line x1="12" y1="8" x2="12" y2="12"/>
-                            <line x1="12" y1="16" x2="12.01" y2="16"/>
-                        </svg>
-                        <span id="login-error-text">Mã truy cập không hợp lệ. Vui lòng kiểm tra lại</span>
-                    </div>
-
-                    <button 
-                        type="submit" 
-                        id="btn-submit" 
-                        class="w-full py-3 px-4 bg-gradient-to-r from-[#24428a] to-[#345ec4] hover:from-[#2c50a6] hover:to-[#3e6fe0] active:scale-[0.99] border border-[#4b72db]/40 rounded-xl text-xs sm:text-sm font-bold text-white shadow-[0_4px_16px_rgba(36,66,138,0.35),inset_0_1px_0_rgba(255,255,255,0.2)] flex items-center justify-center gap-2 transition duration-150 cursor-pointer"
-                    >
-                        <span>Đăng nhập hệ thống</span>
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M5 12h14"/>
-                            <path d="m12 5 7 7-7 7"/>
-                        </svg>
-                    </button>
-                </form>
-
-                <p class="text-center text-xs text-zinc-400 mt-4 leading-relaxed font-normal">
-                    Mã mặc định hệ thống: <span class="font-mono text-zinc-300 font-medium">gv123</span>
-                </p>
-            </div>
-
-            <!-- Bottom helper text -->
-            <div class="relative z-10 text-center text-xs text-zinc-400 pt-4">
-                Hệ thống xác thực nội bộ FaceAttendance
-            </div>
-        </main>
-
+    <!-- Subtle ambient glow -->
+    <div class="fixed inset-0 pointer-events-none overflow-hidden">
+        <div class="absolute top-[20%] left-1/2 -translate-x-1/2 w-[600px] h-[350px] bg-[radial-gradient(ellipse_at_center,rgba(42,70,144,0.12)_0%,transparent_70%)]"></div>
     </div>
+
+    <!-- Top spacer for centering balance -->
+    <div class="w-full max-w-sm flex items-center justify-between text-xs text-zinc-400 relative z-10 pt-2">
+        <a href="/" class="inline-flex items-center gap-2 hover:text-white transition-colors duration-150">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="m15 18-6-6 6-6"/>
+            </svg>
+            <span>Quay lại camera</span>
+        </a>
+        <div class="flex items-center gap-1.5">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+            <span>Hệ thống sẵn sàng</span>
+        </div>
+    </div>
+
+    <!-- Minimalist Auth Card -->
+    <main class="w-full max-w-sm my-auto relative z-10">
+        <div class="bg-[#080b13] border border-white/[0.08] rounded-2xl p-7 sm:p-8 shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_20px_50px_rgba(0,0,0,0.6)]">
+            
+            <!-- Brand icon and title -->
+            <div class="mb-6">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#9dbcff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="mb-3">
+                    <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
+                    <circle cx="12" cy="12" r="3"/>
+                </svg>
+                <h1 class="text-xl font-bold tracking-tight text-white">
+                    Xác thực Giảng viên
+                </h1>
+                <p class="text-xs text-zinc-400 mt-1 font-normal leading-relaxed">
+                    Nhập mã truy cập để đăng nhập hệ thống quản lý
+                </p>
+            </div>
+
+            <!-- Form -->
+            <form id="login-form">
+                <div class="mb-4">
+                    <label for="login-code" class="block text-xs font-medium text-zinc-300 mb-1.5">
+                        Mã truy cập
+                    </label>
+                    <div class="relative">
+                        <input 
+                            type="password" 
+                            id="login-code" 
+                            class="w-full pl-3.5 pr-10 py-2.5 bg-white/[0.03] hover:bg-white/[0.05] focus:bg-[#0b0f1a] border border-white/[0.1] focus:border-[#4b72db] focus:ring-1 focus:ring-[#4b72db] rounded-xl text-white text-sm placeholder:text-zinc-600 outline-none transition duration-150 font-sans" 
+                            placeholder="Nhập mã (mặc định: gv123)" 
+                            required 
+                            autofocus
+                            autocomplete="current-password"
+                        >
+                        <button 
+                            type="button" 
+                            id="btn-toggle-code" 
+                            class="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-white transition-colors duration-150 cursor-pointer p-1"
+                            title="Hiện hoặc ẩn mã"
+                            tabindex="-1"
+                        >
+                            <svg id="eye-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/>
+                                <circle cx="12" cy="12" r="3"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Clean error text without box container -->
+                <div id="login-error" class="hidden mb-3.5 flex items-center gap-1.5 text-rose-300 text-xs font-medium">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="shrink-0 text-rose-400">
+                        <circle cx="12" cy="12" r="10"/>
+                        <line x1="12" y1="8" x2="12" y2="12"/>
+                        <line x1="12" y1="16" x2="12.01" y2="16"/>
+                    </svg>
+                    <span id="login-error-text">Mã truy cập không hợp lệ. Vui lòng kiểm tra lại</span>
+                </div>
+
+                <button 
+                    type="submit" 
+                    id="btn-submit" 
+                    class="w-full py-2.5 px-4 bg-gradient-to-b from-[#284894] to-[#1c336b] hover:from-[#3055ae] hover:to-[#223e80] active:scale-[0.98] border border-[#4b72db]/40 rounded-xl text-xs sm:text-sm font-semibold text-white shadow-[0_2px_8px_rgba(0,0,0,0.35),inset_0_1px_0_rgba(255,255,255,0.18)] flex items-center justify-center gap-2 transition duration-150 cursor-pointer"
+                >
+                    <span>Đăng nhập</span>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M5 12h14"/>
+                        <path d="m12 5 7 7-7 7"/>
+                    </svg>
+                </button>
+            </form>
+
+            <div class="mt-4 pt-4 border-t border-white/[0.05] text-center">
+                <span class="text-xs text-zinc-400">Mã mặc định: <span class="font-mono text-zinc-300">gv123</span></span>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Bottom copyright -->
+    <footer class="w-full max-w-sm text-center text-xs text-zinc-400 relative z-10 pb-2">
+        Face Attendance Management
+    </footer>
 
     <div class="toast-container" id="toast-container"></div>
 
@@ -281,7 +212,7 @@
                 }
                 errorEl.classList.remove('hidden');
                 submitBtn.disabled = false;
-                submitBtn.innerHTML = '<span>Đăng nhập hệ thống</span><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg>';
+                submitBtn.innerHTML = '<span>Đăng nhập</span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg>';
             }
         });
     </script>
