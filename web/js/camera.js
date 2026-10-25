@@ -19,6 +19,9 @@ class CameraController {
         this.sidebarClassTitle = document.getElementById('sidebar-class-title');
         this.searchInput = document.getElementById('live-search-input');
         this.faceCountEl = document.getElementById('hud-face-count');
+        this.resetCacheBtn = document.getElementById('reset-cache-btn');
+        this.hudResetBtn = document.getElementById('hud-reset-btn');
+        this.lastFakeToastTime = 0;
 
         this.stream = null;
         this.intervalId = null;
@@ -113,6 +116,7 @@ class CameraController {
             this.hideEmptyState();
             await this.startCamera();
             await this.syncAttendanceList();
+            this.resetFaceCache(false);
             this.startAutoCapture();
             this.updateStatus('Hệ thống sẵn sàng', 'active');
         } catch (err) {
@@ -350,6 +354,20 @@ class CameraController {
         if (this.captureBtn) {
             this.captureBtn.addEventListener('click', () => this.captureAndCheckin(true));
         }
+
+        // dock & hud: reset cache
+        if (this.resetCacheBtn) {
+            this.resetCacheBtn.addEventListener('click', () => this.resetFaceCache(true));
+        }
+        if (this.hudResetBtn) {
+            this.hudResetBtn.addEventListener('click', () => this.resetFaceCache(true));
+        }
+        document.addEventListener('keydown', (e) => {
+            if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT')) return;
+            if (e.key === 'r' || e.key === 'R') {
+                this.resetFaceCache(true);
+            }
+        });
 
         // dock: label toggle
         if (this.labelToggleBtn) {
@@ -1403,6 +1421,21 @@ class CameraController {
         }
     }
 
+    resetFaceCache(isManual = true) {
+        this.trackedFaces = [];
+        this.faceCache = null;
+        this.lastMatches = [];
+        this.cachedIdentity = null;
+        this.clearOverlay();
+        if (this.faceCountEl) {
+            this.faceCountEl.textContent = '0 mặt phát hiện';
+        }
+        if (isManual) {
+            showToast('Đã xóa bộ nhớ đệm, đang quét lại...', 'info');
+            this.captureAndCheckin(true);
+        }
+    }
+
     startAutoCapture() {
         this.stopAutoCapture();
         this.autoEnabled = true;
@@ -1410,23 +1443,19 @@ class CameraController {
         const loop = async () => {
             if (!this.autoEnabled) return;
             const isOpen = this.currentLesson && (this.currentLesson.trang_thai === 'open' || this.currentLesson.status === 'open');
-            const allCached = this.trackedFaces.length > 0 && this.trackedFaces.every((f) => f.isCached && f.opacity > 0.5);
-            const now = performance.now();
-            const shouldHeartbeat = !this.localFaceDetector && allCached && (now - (this.lastHeartbeatTime || 0) > 4000);
+            const allVerified = this.trackedFaces.length > 0 && this.trackedFaces.every((f) => (f.isVerified || f.isCached) && f.opacity > 0.5);
 
-            // pause sending frames to server when all faces in view are verified and cached
-            if ((!allCached || shouldHeartbeat) && !this.isProcessing && !this.scanCooldown && isOpen && this.video && this.video.readyState >= 2) {
-                if (shouldHeartbeat) this.lastHeartbeatTime = now;
+            if (!this.isProcessing && !this.scanCooldown && isOpen && this.video && this.video.readyState >= 2) {
                 await this.captureAndCheckin(false);
             }
 
             if (this.autoEnabled) {
-                let delay = 100;
+                let delay = 160;
                 if (this.scanCooldown) {
-                    delay = 1200;
-                } else if (allCached) {
-                    // check locally every 300ms if conditions change
-                    delay = 300;
+                    delay = 1000;
+                } else if (allVerified) {
+                    // maintain periodic liveness checks even for verified faces
+                    delay = 600;
                 }
                 this.autoTimeoutId = setTimeout(loop, delay);
             }
@@ -1492,7 +1521,6 @@ class CameraController {
             const vw = this.video.videoWidth || 1280;
             const vh = this.video.videoHeight || 720;
 
-            // send optimized 960 resolution for fast encoding and responsive tracking
             const maxDimension = 960;
             const scale = Math.min(1.0, maxDimension / Math.max(vw, vh));
             const sendW = Math.round(vw * scale);
@@ -1505,36 +1533,6 @@ class CameraController {
             }
             const ctx = offscreen.getContext('2d');
             ctx.drawImage(this.video, 0, 0, sendW, sendH);
-
-            // mask cached faces when unverified faces are present so server focuses only on new faces
-            const hasUnverified = this.trackedFaces.some((f) => !f.isCached);
-            this.lastMaskedFaces = [];
-
-            if (hasUnverified) {
-                const canvasWidth = this.canvas.width || 1280;
-                for (let i = 0; i < this.trackedFaces.length; i++) {
-                    const face = this.trackedFaces[i];
-                    if (face.isCached && face.opacity > 0.5) {
-                        const [sx, sy, sw, sh] = face.currentRect;
-                        const rawX = canvasWidth - sx - sw;
-                        const rawY = sy;
-                        const rawW = sw;
-                        const rawH = sh;
-
-                        const padX = rawW * 0.15;
-                        const padY = rawH * 0.15;
-
-                        const maskX = Math.max(0, Math.round((rawX - padX) * scale));
-                        const maskY = Math.max(0, Math.round((rawY - padY) * scale));
-                        const maskW = Math.min(sendW - maskX, Math.round((rawW + padX * 2) * scale));
-                        const maskH = Math.min(sendH - maskY, Math.round((rawH + padY * 2) * scale));
-
-                        ctx.fillStyle = '#000000';
-                        ctx.fillRect(maskX, maskY, maskW, maskH);
-                        this.lastMaskedFaces.push(i);
-                    }
-                }
-            }
 
             offscreen.toBlob(resolve, 'image/jpeg', 0.75);
         });
@@ -1608,7 +1606,7 @@ class CameraController {
         for (let i = this.trackedFaces.length - 1; i >= 0; i--) {
             const face = this.trackedFaces[i];
             const age = now - face.lastSeen;
-            const maxHoldTime = face.isCached ? 2500 : 800;
+            const maxHoldTime = (face.isVerified || face.isCached) ? 2500 : 800;
 
             if (age > maxHoldTime || face.lossCount >= 6) {
                 face.opacity -= 0.05;
@@ -1825,13 +1823,10 @@ class CameraController {
         const matchedIndices = new Set();
         const nowDate = new Date();
         const timeStr = window.VNTime ? window.VNTime.getCurrentTimeFull() : nowDate.toTimeString().split(' ')[0];
-        let hasNewCheckin = false;
 
         matches.forEach((m) => {
             const cleanName = (m.ho_ten || '').replace(/^['"]|['"]$/g, '').trim();
             const cleanMssv = (m.mssv || '').replace(/^['"]|['"]$/g, '').trim();
-            const isVerifiedMatch = (m.status === 'new' || m.status === 'already' || m.status === 'other_class') &&
-                cleanName && cleanName !== 'Chưa đăng ký' && cleanName !== 'Giả mạo';
 
             let screenX = 0, screenY = 0, screenW = 0, screenH = 0;
             if (m.bbox && m.bbox.length >= 4) {
@@ -1850,7 +1845,6 @@ class CameraController {
                 const scx = screenX + screenW / 2;
                 const scy = screenY + screenH / 2;
 
-                // spatial matching to nearest existing tracked face
                 let bestIdx = -1;
                 let bestDist = Infinity;
                 const maxDist = Math.max(screenW, screenH) * 1.5;
@@ -1867,23 +1861,10 @@ class CameraController {
                     }
                 }
 
+                let tf = null;
                 if (bestIdx !== -1) {
                     matchedIndices.add(bestIdx);
-                    const tf = this.trackedFaces[bestIdx];
-
-                    if (isVerifiedMatch) {
-                        tf.isCached = true;
-                        tf.name = cleanName;
-                        tf.mssv = cleanMssv;
-                        tf.similarity = m.similarity;
-                        tf.status = m.status === 'new' ? 'new' : (tf.status === 'new' ? 'new' : m.status);
-                    } else if (!tf.isCached) {
-                        tf.name = cleanName;
-                        tf.mssv = cleanMssv;
-                        tf.similarity = m.similarity;
-                        tf.status = m.status;
-                    }
-
+                    tf = this.trackedFaces[bestIdx];
                     if (!this.localFaceDetector) {
                         tf.targetRect = [...serverRect];
                     }
@@ -1891,75 +1872,156 @@ class CameraController {
                     tf.lossCount = 0;
                     tf.opacity = 1.0;
                 } else {
-                    const newFace = {
+                    tf = {
                         name: cleanName,
                         mssv: cleanMssv,
-                        similarity: m.similarity,
+                        similarity: m.similarity || 0,
                         status: m.status,
-                        isCached: isVerifiedMatch,
+                        isCached: false,
+                        isVerified: false,
                         currentRect: [...serverRect],
                         targetRect: [...serverRect],
                         lastSeen: now,
                         lossCount: 0,
                         opacity: 1.0,
+                        history: [],
                     };
-                    this.trackedFaces.push(newFace);
+                    this.trackedFaces.push(tf);
                     matchedIndices.add(this.trackedFaces.length - 1);
                 }
+
+                if (!tf.history) tf.history = [];
+                tf.history.push({
+                    status: m.status,
+                    name: cleanName,
+                    mssv: cleanMssv,
+                    similarity: m.similarity || 0,
+                    isFake: m.status === 'fake',
+                    time: now,
+                });
+                if (tf.history.length > 5) {
+                    tf.history.shift();
+                }
+
+                this.resolveFaceConsensus(tf, m, timeStr, isManual);
             }
+        });
 
-            if (m.status === 'new') {
-                hasNewCheckin = true;
+        for (let i = 0; i < this.trackedFaces.length; i++) {
+            if (!matchedIndices.has(i)) {
+                this.trackedFaces[i].lossCount = (this.trackedFaces[i].lossCount || 0) + 1;
+            }
+        }
+        this.faceCache = this.trackedFaces[0] || null;
+    }
+
+    resolveFaceConsensus(tf, m, timeStr, isManual = false) {
+        const history = tf.history || [];
+        const isLatestFake = m.status === 'fake';
+        const fakeVotes = history.filter((h) => h.isFake).length;
+
+        // prioritize anti-spoofing over stale cached identity
+        if (isLatestFake || fakeVotes >= 2) {
+            tf.status = 'fake';
+            tf.name = 'Giả mạo';
+            tf.mssv = '';
+            tf.similarity = 0;
+            tf.isCached = false;
+            tf.isVerified = false;
+
+            const nowMs = Date.now();
+            if (!this.lastFakeToastTime || nowMs - this.lastFakeToastTime > 3500) {
+                this.lastFakeToastTime = nowMs;
+                showToast('Cảnh báo: Phát hiện khuôn mặt giả mạo!', 'error');
+            }
+            return;
+        }
+
+        // tally votes across recent non-fake frames
+        const validVotes = history.filter((h) => !h.isFake);
+        const candidates = new Map();
+        let unknownCount = 0;
+
+        for (const v of validVotes) {
+            if (v.status === 'unknown' || !v.mssv) {
+                unknownCount++;
+            } else {
+                const prev = candidates.get(v.mssv) || {
+                    count: 0,
+                    name: v.name,
+                    mssv: v.mssv,
+                    status: v.status,
+                    maxSim: 0,
+                };
+                prev.count++;
+                if (v.similarity > prev.maxSim) prev.maxSim = v.similarity;
+                if (v.status === 'new') prev.status = 'new';
+                candidates.set(v.mssv, prev);
+            }
+        }
+
+        let bestCandidate = null;
+        for (const c of candidates.values()) {
+            if (!bestCandidate || c.count > bestCandidate.count || (c.count === bestCandidate.count && c.maxSim > bestCandidate.maxSim)) {
+                bestCandidate = c;
+            }
+        }
+
+        if (bestCandidate && bestCandidate.count >= unknownCount) {
+            const isWinnerNew = bestCandidate.status === 'new' || m.status === 'new';
+            tf.name = bestCandidate.name;
+            tf.mssv = bestCandidate.mssv;
+            tf.similarity = bestCandidate.maxSim;
+            tf.status = isWinnerNew ? 'new' : (tf.status === 'new' ? 'new' : bestCandidate.status);
+            tf.isCached = true;
+            tf.isVerified = true;
+
+            if (isWinnerNew && tf.announcedMssv !== bestCandidate.mssv) {
+                tf.announcedMssv = bestCandidate.mssv;
+                this.scanCooldown = true;
+                setTimeout(() => {
+                    this.scanCooldown = false;
+                }, 1000);
+
                 this.playSuccessChime();
-                showToast(`Điểm danh thành công: ${cleanName}`, 'success');
+                showToast(`Điểm danh thành công: ${bestCandidate.name}`, 'success');
 
-                const target = (this.rosterList || []).find((r) => r.mssv === cleanMssv);
+                const target = (this.rosterList || []).find((r) => r.mssv === bestCandidate.mssv);
                 if (target) {
                     target.trang_thai = 'present';
                     target.thoi_gian = timeStr;
-                    target.similarity = m.similarity;
+                    target.similarity = bestCandidate.maxSim;
                 }
                 this.renderLiveFeed();
-            } else if (m.status === 'already') {
-                if (isManual) showToast(`${cleanName}: Đã có mặt rồi`, 'info');
-            } else if (m.status === 'other_class') {
+            } else if (bestCandidate.status === 'already' && isManual) {
+                showToast(`${bestCandidate.name}: Đã có mặt rồi`, 'info');
+            } else if (bestCandidate.status === 'other_class') {
                 const nowMs = Date.now();
                 if (!this.lastOtherToastTime || nowMs - this.lastOtherToastTime > 4000) {
                     this.lastOtherToastTime = nowMs;
-                    showToast(`${cleanName} (${cleanMssv}): Không thuộc danh sách lớp này`, 'warning');
+                    showToast(`${bestCandidate.name} (${bestCandidate.mssv}): Không thuộc danh sách lớp này`, 'warning');
                 }
-                if (cleanMssv) {
-                    this.recentOtherScans.set(cleanMssv, {
-                        name: cleanName,
-                        mssv: cleanMssv,
+                if (bestCandidate.mssv) {
+                    this.recentOtherScans.set(bestCandidate.mssv, {
+                        name: bestCandidate.name,
+                        mssv: bestCandidate.mssv,
                         time: timeStr,
                         timestamp: nowMs,
                     });
                     this.renderLiveFeed();
                 }
-            } else if (m.status === 'fake' && isManual) {
-                showToast('Cảnh báo: Phát hiện khuôn mặt giả mạo!', 'error');
             }
-        });
-
-        if (hasNewCheckin) {
-            this.scanCooldown = true;
-            setTimeout(() => {
-                this.scanCooldown = false;
-            }, 1200);
-        }
-
-        const maskedSet = new Set(this.lastMaskedFaces || []);
-        for (let i = 0; i < this.trackedFaces.length; i++) {
-            if (!matchedIndices.has(i)) {
-                if (maskedSet.has(i)) {
-                    this.trackedFaces[i].lastSeen = now;
-                } else {
-                    this.trackedFaces[i].lossCount = (this.trackedFaces[i].lossCount || 0) + 1;
-                }
+        } else {
+            tf.name = 'Chưa đăng ký';
+            tf.mssv = '';
+            tf.similarity = m.similarity || 0;
+            tf.status = 'unknown';
+            tf.isCached = false;
+            tf.isVerified = false;
+            if (isManual) {
+                showToast('Chưa nhận diện được sinh viên trong danh sách', 'warning');
             }
         }
-        this.faceCache = this.trackedFaces[0] || null;
     }
 
     drawTrackedBox(face) {
