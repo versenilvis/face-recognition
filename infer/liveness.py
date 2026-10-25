@@ -1,20 +1,22 @@
 """
-MiniFASNetV2 wrapper: anti-spoofing liveness detection
-depends on cloned repo: Silent-Face-Anti-Spoofing/
+MiniFASNet wrapper: anti-spoofing liveness detection
+Hỗ trợ cả LivenessChecker (ensemble các mô hình .pth trong resources/anti_spoof_models)
+và hàm check_liveness (nhận trực tiếp BBox từ Buffalo, không gọi RetinaFace).
 """
 
 import os
 import sys
+from collections import OrderedDict
 import cv2
 import numpy as np
 import torch
+import torch.nn.functional as F
+
 from config import (
     ANTI_SPOOF_DIR,
+    ANTI_SPOOF_MODEL_DIR,
     ANTI_SPOOF_MODEL,
-    ANTI_SPOOF_CAFFE_MODEL,
-    ANTI_SPOOF_CAFFE_DEPLOY,
     LIVENESS_THRESH,
-    LIVENESS_MARGIN,
 )
 
 # allow older state_dict files in newer pytorch versions
@@ -33,83 +35,140 @@ torch.load = _safe_torch_load
 if ANTI_SPOOF_DIR not in sys.path:
     sys.path.insert(0, ANTI_SPOOF_DIR)
 
-from src.anti_spoof_predict import AntiSpoofPredict, Detection
-from src.generate_patches import CropImage
-from src.utility import parse_model_name
+from src.model_lib.MiniFASNet import (
+    MiniFASNetV1,
+    MiniFASNetV2,
+    MiniFASNetV1SE,
+    MiniFASNetV2SE,
+)
+from src.utility import get_kernel, parse_model_name
 
-# Vá đè __init__ của Detection để nạp Caffe model theo đường dẫn tuyệt đối (Cell 18 trong ce201.ipynb)
-def _patched_det_init(self):
-    if os.path.exists(ANTI_SPOOF_CAFFE_DEPLOY) and os.path.exists(ANTI_SPOOF_CAFFE_MODEL):
-        try:
-            self.detector = cv2.dnn.readNetFromCaffe(
-                ANTI_SPOOF_CAFFE_DEPLOY, ANTI_SPOOF_CAFFE_MODEL
+
+def crop_liveness_scale(
+    img: np.ndarray, bbox: list[int], scale: float, out_size: tuple[int, int]
+) -> np.ndarray:
+    """Crop theo CropImage của Silent-Face-Anti-Spoofing. bbox = [x1, y1, x2, y2]."""
+    H, W = img.shape[:2]
+    x1, y1, x2, y2 = bbox
+    bw, bh = max(1, x2 - x1), max(1, y2 - y1)
+    s = min((H - 1) / bh, (W - 1) / bw, scale)
+    nw, nh = bw * s, bh * s
+    cx, cy = x1 + bw / 2.0, y1 + bh / 2.0
+    l, t, r, b = cx - nw / 2, cy - nh / 2, cx + nw / 2, cy + nh / 2
+    if l < 0:
+        r -= l
+        l = 0
+    if t < 0:
+        b -= t
+        t = 0
+    if r > W - 1:
+        l -= r - W + 1
+        r = W - 1
+    if b > H - 1:
+        t -= b - H + 1
+        b = H - 1
+    crop = img[max(0, int(t)) : min(H, int(b) + 1), max(0, int(l)) : min(W, int(r) + 1)]
+    return cv2.resize(crop, out_size)
+
+
+class LivenessChecker:
+    """Nạp mọi .pth trong model_dir (1 lần duy nhất), trung bình softmax. Trả về [p0, p_REAL, p2]."""
+
+    def __init__(
+        self,
+        repo_dir: str | None = None,
+        model_dir: str | None = None,
+        device: torch.device | None = None,
+    ):
+        self.repo_dir = repo_dir or ANTI_SPOOF_DIR
+        self.model_dir = model_dir or ANTI_SPOOF_MODEL_DIR
+        if self.repo_dir not in sys.path:
+            sys.path.insert(0, self.repo_dir)
+
+        arch = {
+            "MiniFASNetV1": MiniFASNetV1,
+            "MiniFASNetV2": MiniFASNetV2,
+            "MiniFASNetV1SE": MiniFASNetV1SE,
+            "MiniFASNetV2SE": MiniFASNetV2SE,
+        }
+        self.device = device or torch.device(
+            "cuda:0" if torch.cuda.is_available() else "cpu"
+        )
+        self.models = []
+
+        if os.path.exists(self.model_dir):
+            pth_files = sorted(
+                f for f in os.listdir(self.model_dir) if f.endswith(".pth")
             )
-            self.detector_confidence = 0.6
-            return
-        except Exception:
-            pass
-    self.detector = None
-    self.detector_confidence = 0.6
+        else:
+            pth_files = []
+
+        if not pth_files and os.path.exists(ANTI_SPOOF_MODEL):
+            pth_files = [os.path.basename(ANTI_SPOOF_MODEL)]
+            self.model_dir = os.path.dirname(ANTI_SPOOF_MODEL)
+
+        for name in pth_files:
+            try:
+                h, w, mtype, scale = parse_model_name(name)
+                net = arch[mtype](conv6_kernel=get_kernel(h, w)).to(self.device)
+                state = torch.load(
+                    os.path.join(self.model_dir, name), map_location=self.device
+                )
+                state = OrderedDict(
+                    (k.replace("module.", "", 1), v) for k, v in state.items()
+                )
+                net.load_state_dict(state, strict=True)
+                self.models.append((net.eval(), (w, h), scale))
+            except Exception:
+                continue
+
+        assert self.models, f"Không có .pth hợp lệ trong {self.model_dir}"
+
+    def predict(self, img_bgr: np.ndarray, bbox: list[int]) -> np.ndarray:
+        """Trả về numpy array 3 phần tử [p0, p_REAL, p2] trung bình các models."""
+        total = np.zeros(3, dtype=np.float32)
+        for net, size, scale in self.models:
+            crop = crop_liveness_scale(img_bgr, bbox, scale, size)
+            x = (
+                torch.from_numpy(crop.transpose(2, 0, 1))
+                .float()[None]
+                .to(self.device)
+            )
+            with torch.no_grad():
+                out = net(x)
+                probs = F.softmax(out, dim=1).cpu().numpy()[0]
+                total += probs
+        return total / len(self.models)
 
 
-def _safe_get_bbox(self, img):
-    if getattr(self, "detector", None) is None:
-        return [0, 0, 0, 0]
-    try:
-        return Detection.get_bbox(self, img)
-    except Exception:
-        return [0, 0, 0, 0]
+_checker: LivenessChecker | None = None
 
 
-Detection.__init__ = _patched_det_init
-Detection.get_bbox = _safe_get_bbox
+def get_liveness_checker() -> LivenessChecker:
+    global _checker
+    if _checker is None:
+        _checker = LivenessChecker()
+    return _checker
 
 
-_predictor: AntiSpoofPredict | None = None
-_cropper: CropImage | None = None
-
-
-def _get_models() -> tuple[AntiSpoofPredict, CropImage]:
-    global _predictor, _cropper
-    if _predictor is None:
-        device_id = 0 if torch.cuda.is_available() else -1
-        _predictor = AntiSpoofPredict(device_id)
-        _cropper = CropImage()
-    return _predictor, _cropper
+_get_models = get_liveness_checker  # backward compat alias
 
 
 def check_liveness(img_bgr: np.ndarray, bbox: list[int]) -> tuple[str, float]:
     """
-    run MiniFASNetV2 on face bounding box to detect spoof.
-    returns ("Real" | "Fake", confidence_score 0.0 - 1.0)
+    Chạy Liveness ensemble trên BBox [x1, y1, x2, y2].
+    Dùng trực tiếp BBox từ Buffalo (InsightFace), KHÔNG gọi RetinaFace để tiết kiệm FLOP.
+    Trả về: ("Real" | "Fake", real_probability 0.0 - 1.0)
     """
     try:
-        predictor, cropper = _get_models()
+        checker = get_liveness_checker()
         x1, y1, x2, y2 = bbox
-
-        face_w = x2 - x1
-        face_h = y2 - y1
-        if face_w <= 0 or face_h <= 0:
+        if x2 - x1 <= 0 or y2 - y1 <= 0:
             return "Fake", 0.0
 
-        model_name = os.path.basename(ANTI_SPOOF_MODEL)
-        h_in, w_in, _, scale = parse_model_name(model_name)
-        param = {
-            "org_img": img_bgr,
-            "bbox": [x1, y1, face_w, face_h],
-            "scale": scale,
-            "out_w": w_in,
-            "out_h": h_in,
-            "crop": True,
-        }
-        img_crop = cropper.crop(**param)
-        pred = predictor.predict(img_crop, ANTI_SPOOF_MODEL)
-
-        real_score = float(pred[0][1])
+        probs = checker.predict(img_bgr, [x1, y1, x2, y2])
+        real_score = float(probs[1])
         label = "Real" if real_score >= LIVENESS_THRESH else "Fake"
         return label, real_score
-
     except Exception:
         return "Fake", 0.0
-
-

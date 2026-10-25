@@ -8,7 +8,7 @@ import numpy as np
 from flask import Flask, request, jsonify
 from pipeline import process_frame, FaceResult
 from detector import load_model
-from liveness import _get_models
+from liveness import get_liveness_checker
 
 app = Flask(__name__)
 
@@ -28,8 +28,8 @@ def infer():
 
     if img_bgr is None:
         return jsonify({"error": "invalid image"}), 400
-    tta_mode = request.form.get("tta_mode") or request.args.get("tta_mode")
-    results: list[FaceResult] = process_frame(img_bgr, tta_mode=tta_mode)
+
+    results: list[FaceResult] = process_frame(img_bgr)
 
     return jsonify({
         "faces": [
@@ -51,8 +51,7 @@ if __name__ == "__main__":
     # warm up models before accepting requests
     print("loading models...")
     load_model()
-    _get_models()
+    get_liveness_checker()
     print("ready, listening on 0.0.0.0:8001")
 
     app.run(host="0.0.0.0", port=8001, debug=False)
-

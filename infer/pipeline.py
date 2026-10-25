@@ -6,14 +6,16 @@ this is what app.py calls per request.
 from dataclasses import dataclass
 import numpy as np
 
-from detector import get_faces, DetectedFace
-from liveness import check_liveness
+from detector import get_faces, DetectedFace, detect_faces, get_embedding
+from liveness import check_liveness, LivenessChecker, crop_liveness_scale
 
 # backward compatibility for functions originating from ce201.ipynb
 from notebook_compat import (
+    FaissFaceDB,
     cos_sim,
     load_database,
     add_to_database,
+    process_frame as process_notebook_frame,
     process_multi_face_frame,
 )
 
@@ -22,7 +24,7 @@ from notebook_compat import (
 class FaceResult:
     bbox: list[int]
     det_score: float
-    embedding: list[float]       # 512-dim, normalized (with TTA)
+    embedding: list[float]       # 512-dim, normalized
     liveness_label: str          # "Real" | "Fake"
     liveness_score: float        # 0.0 - 1.0
 
@@ -30,7 +32,8 @@ class FaceResult:
 def process_frame(
     img_bgr: np.ndarray,
     max_faces: int | None = None,
-    tta_mode: str | None = None,
+    *args,
+    **kwargs,
 ) -> list[FaceResult]:
     """
     run full pipeline on a single frame.
@@ -38,7 +41,7 @@ def process_frame(
     go-side decides what to do with fake faces.
     """
     faces: list[DetectedFace] = get_faces(
-        img_bgr, max_faces=max_faces, tta_mode=tta_mode
+        img_bgr, max_faces=max_faces
     )
     results: list[FaceResult] = []
 

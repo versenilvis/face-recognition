@@ -1,6 +1,6 @@
 """
-insightface wrapper: face detection + alignment + TTA embedding extraction
-uses buffalo_s: RetinaFace (detect) + ArcFace (embed) with TTA (Test-Time Augmentation)
+insightface wrapper: face detection + alignment + embedding extraction
+uses buffalo_s: RetinaFace (detect) + ArcFace (embed)
 """
 
 import cv2
@@ -16,13 +16,12 @@ from config import (
     DET_THRESH,
     MAX_FACES,
     ALIGNED_FACE_SIZE,
-    TTA_MODE,
 )
 
 
 @dataclass
 class DetectedFace:
-    bbox: list[int]       # [x1, y1, x2, y2] in original image coords
+    bbox: list[int]  # [x1, y1, x2, y2] in original image coords
     det_score: float
     embedding: list[float]  # 512-dim normalized ArcFace embedding
 
@@ -57,100 +56,116 @@ def get_recognition_model(app: FaceAnalysis):
     return rec_model
 
 
-# cached clahe and gamma lut tables to avoid reallocating per face
-_clahe = cv2.createCLAHE(clipLimit=1.5, tileGridSize=(4, 4))
-_GAMMA = 1.25
-_INV_GAMMA = 1.0 / _GAMMA
-_GAMMA_LUT = np.array(
-    [((i / 255.0) ** _INV_GAMMA) * 255 for i in range(256)], dtype="uint8"
-)
-
-
-def get_face_variants(
-    aligned_face: np.ndarray, mode: str | None = None
-) -> list[np.ndarray]:
+def get_embedding(rec_model, aligned: np.ndarray) -> np.ndarray:
     """
-    Tạo các biến thể kết hợp giữa TTA đối xứng và các phép biến đổi ánh sáng/màu sắc:
-    - mode="none": Chỉ lấy ảnh gốc (1 biến thể, tốc độ cao nhất)
-    - mode="fast": Ảnh gốc + Lật ngang (2 biến thể, cân bằng tốc độ và độ ổn định)
-    - mode="full": Cả 5 biến thể (Gốc, Lật ngang, Grayscale, CLAHE, Gamma)
+    Trích xuất vector đặc trưng khuôn mặt từ ảnh đã căn chỉnh 112x112 và chuẩn hóa L2 đơn vị.
+    Không dùng augmentation để tối ưu tối đa FLOP và tốc độ.
     """
-    if mode is None:
-        mode = TTA_MODE
-    mode = str(mode).lower()
-
-    # 1. Ảnh gốc
-    variants = [aligned_face]
-    if mode in ("none", "off"):
-        return variants
-
-    # 2. Lật ngang (Horizontal Flip)
-    variants.append(cv2.flip(aligned_face, 1))
-    if mode == "fast":
-        return variants
-
-    # 3. Khử màu (Grayscale 3 kênh)
-    gray = cv2.cvtColor(aligned_face, cv2.COLOR_BGR2GRAY)
-    variants.append(cv2.cvtColor(gray, cv2.COLOR_GRAY2BGR))
-
-    # 4. Cân bằng tương phản cục bộ (CLAHE trên kênh Y của YCrCb)
-    ycrcb = cv2.cvtColor(aligned_face, cv2.COLOR_BGR2YCrCb)
-    ycrcb[:, :, 0] = _clahe.apply(ycrcb[:, :, 0])
-    clahe_face = cv2.cvtColor(ycrcb, cv2.COLOR_YCrCb2BGR)
-    variants.append(clahe_face)
-
-    # 5. Hiệu chỉnh Gamma (gamma = 1.25 giúp xử lý góc thiếu sáng/ngược sáng)
-    gamma_face = cv2.LUT(aligned_face, _GAMMA_LUT)
-    variants.append(gamma_face)
-
-    return variants
+    f = rec_model.get_feat(aligned).flatten()
+    return (f / norm(f)).astype(np.float32)
 
 
-def extract_tta_vectors(
-    rec_model, aligned_face: np.ndarray, tta_mode: str | None = None
-) -> np.ndarray:
+# Shims tương thích ngược
+def compute_face_embedding(rec_model, aligned_face: np.ndarray, *args, **kwargs) -> list[float]:
+    return get_embedding(rec_model, aligned_face).tolist()
+
+
+def tta_vectors(rec_model, aligned: np.ndarray, *args, **kwargs) -> np.ndarray:
+    return get_embedding(rec_model, aligned)[None]
+
+
+def extract_tta_vectors(rec_model, aligned_face: np.ndarray, *args, **kwargs) -> np.ndarray:
+    return get_embedding(rec_model, aligned_face)[None]
+
+
+def detect_faces(
+    app: FaceAnalysis,
+    img: np.ndarray,
+    det_thresh: float = DET_THRESH,
+    max_faces: int = MAX_FACES,
+) -> tuple[list, np.ndarray, int, int]:
     """
-    Trích xuất vector cho từng biến thể màu sắc và chuẩn hóa L2 đơn vị.
-    Trả về: ma trận numpy shape (K, 512) với K là số biến thể.
+    InsightFace tự letterbox về det_size và trả bbox/kps theo tọa độ ảnh đưa vào.
+    Không có mặt -> thử lại với ảnh pad reflect 50% (mặt cận cảnh).
+    Trả về (list face, work_img, ox, oy); face.kps nằm trong work_img, bbox cần trừ (ox, oy).
     """
-    variants = get_face_variants(aligned_face, mode=tta_mode)
-    try:
-        feats = rec_model.get_feat(variants)
-        norms = norm(feats, axis=1, keepdims=True)
-        norms[norms == 0] = 1.0
-        return (feats / norms).astype(np.float32)
-    except Exception:
-        # fallback to sequential loop if model does not support batch
-        vectors = []
-        for var_img in variants:
-            feat = rec_model.get_feat(var_img)
-            feat_norm = feat / norm(feat)
-            vectors.append(feat_norm.flatten())
-        return np.array(vectors, dtype=np.float32)
+    h, w = img.shape[:2]
+    for pad in (0.0, 0.5):
+        oy, ox = int(h * pad), int(w * pad)
+        work = (
+            cv2.copyMakeBorder(img, oy, oy, ox, ox, cv2.BORDER_REFLECT_101)
+            if pad
+            else img
+        )
+        faces = [f for f in app.get(work) if f.det_score >= det_thresh]
+        if faces:
+            faces.sort(key=lambda f: f.det_score, reverse=True)
+            return faces[:max_faces], work, ox, oy
+    return [], img, 0, 0
 
 
-def compute_face_embedding(
-    rec_model, aligned_face: np.ndarray, tta_mode: str | None = None
-) -> list[float]:
+def get_faces(
+    img_bgr: np.ndarray,
+    max_faces: int | None = MAX_FACES,
+    *args,
+    **kwargs,
+) -> list[DetectedFace]:
     """
-    Tính vector đặc trưng trung bình từ các biến thể TTA và chuẩn hóa L2.
-    Trả về list[float] 512 chiều chuẩn hóa.
+    Phát hiện và trích xuất vector đặc trưng khuôn mặt (không dùng augmentation):
+    - Sử dụng detect_faces với fallback BORDER_REFLECT_101 cho ảnh cận cảnh.
+    - Cắt mặt 112x112 trực tiếp trên work_img bằng face.kps chuẩn xác.
+    - BBox được quy đổi về hệ tọa độ ảnh gốc img_bgr.
+    - Trích xuất 1 vector đặc trưng chuẩn hóa L2 đơn vị (512 chiều) duy nhất.
     """
-    vectors = extract_tta_vectors(rec_model, aligned_face, tta_mode=tta_mode)
-    mean_emb = np.mean(vectors, axis=0)
-    mean_emb = mean_emb / norm(mean_emb)
-    return mean_emb.astype(np.float32).tolist()
+    app = load_model()
+    rec_model = get_recognition_model(app)
+    h_org, w_org = img_bgr.shape[:2]
+    limit = max_faces if max_faces is not None and max_faces > 0 else MAX_FACES
+
+    faces, work, ox, oy = detect_faces(
+        app, img_bgr, det_thresh=DET_THRESH, max_faces=limit
+    )
+
+    results = []
+    for face in faces:
+        px1, py1, px2, py2 = face.bbox
+        x1 = max(0, int(round(px1 - ox)))
+        y1 = max(0, int(round(py1 - oy)))
+        x2 = min(w_org, int(round(px2 - ox)))
+        y2 = min(h_org, int(round(py2 - oy)))
+
+        embedding = None
+        if hasattr(face, "kps") and face.kps is not None and rec_model is not None:
+            try:
+                aligned_face = face_align.norm_crop(
+                    work, landmark=face.kps, image_size=ALIGNED_FACE_SIZE
+                )
+                if aligned_face is not None and aligned_face.size > 0:
+                    embedding = get_embedding(rec_model, aligned_face).tolist()
+            except Exception:
+                embedding = None
+
+        if embedding is None:
+            if hasattr(face, "normed_embedding") and face.normed_embedding is not None:
+                embedding = face.normed_embedding.tolist()
+            else:
+                embedding = [0.0] * 512
+
+        results.append(
+            DetectedFace(
+                bbox=[x1, y1, x2, y2],
+                det_score=float(face.det_score),
+                embedding=embedding,
+            )
+        )
+
+    return results
 
 
 def letterbox_image(
     img_bgr: np.ndarray, target_size: tuple[int, int] = DET_SIZE
 ) -> tuple[np.ndarray, int, int, float, float]:
-    """
-    Scale ảnh giữ nguyên 100% tỉ lệ H:W (Aspect Ratio):
-    - Đưa chiều lớn nhất của ảnh về đúng kích thước target_size.
-    - Chiều nhỏ hơn sẽ co/giãn theo đúng tỉ lệ và bù phần thiếu bằng pad đen đối xứng.
-    - Dùng INTER_AREA khi thu nhỏ (chống răng cưa) và INTER_LINEAR khi phóng to.
-    """
+    """Hàm scale ảnh giữ nguyên tỉ lệ H:W (giữ lại tương thích ngược)."""
     h_org, w_org = img_bgr.shape[:2]
     target_h, target_w = target_size
 
@@ -186,72 +201,3 @@ def letterbox_image(
     )
 
     return img_padded, pad_left, pad_top, scale_x, scale_y
-
-
-def get_faces(
-    img_bgr: np.ndarray,
-    max_faces: int | None = MAX_FACES,
-    tta_mode: str | None = None,
-) -> list[DetectedFace]:
-    """
-    Phát hiện và trích xuất vector đặc trưng khuôn mặt (Cách 2 trong ce201.ipynb):
-    - Chuẩn hóa tỉ lệ ảnh bằng letterbox_image (giữ nguyên aspect ratio).
-    - Cắt mặt 112x112 trực tiếp trên img_padded bằng face.kps chuẩn xác.
-    - BBox được quy đổi về hệ tọa độ ảnh gốc img_bgr.
-    - Trích xuất vector 5 biến thể TTA và chuẩn hóa L2 đơn vị (512 chiều).
-    """
-    app = load_model()
-    rec_model = get_recognition_model(app)
-    h_org, w_org = img_bgr.shape[:2]
-    img_padded, pad_left, pad_top, scale_x, scale_y = letterbox_image(
-        img_bgr, target_size=DET_SIZE
-    )
-
-    raw_faces = app.get(img_padded)
-
-    # 1. Lọc theo ngưỡng phát hiện và sắp xếp giảm dần theo det_score
-    valid_faces = [f for f in raw_faces if f.det_score >= DET_THRESH]
-    valid_faces.sort(key=lambda f: f.det_score, reverse=True)
-    if max_faces is not None and max_faces > 0:
-        valid_faces = valid_faces[:max_faces]
-
-    results = []
-    for face in valid_faces:
-        px1, py1, px2, py2 = face.bbox
-        # Quy đổi BBox về tọa độ ảnh gốc
-        x1 = max(0, int(round((px1 - pad_left) / scale_x)))
-        y1 = max(0, int(round((py1 - pad_top) / scale_y)))
-        x2 = min(w_org, int(round((px2 - pad_left) / scale_x)))
-        y2 = min(h_org, int(round((py2 - pad_top) / scale_y)))
-
-        # 2. Cắt mặt trực tiếp trên khung chuẩn img_padded (Cách 2)
-        embedding = None
-        if hasattr(face, "kps") and face.kps is not None and rec_model is not None:
-            try:
-                aligned_face = face_align.norm_crop(
-                    img_padded, landmark=face.kps, image_size=ALIGNED_FACE_SIZE
-                )
-                if aligned_face is not None and aligned_face.size > 0:
-                    embedding = compute_face_embedding(
-                        rec_model, aligned_face, tta_mode=tta_mode
-                    )
-            except Exception:
-                embedding = None
-
-        # Fallback nếu crop hoặc TTA thất bại
-        if embedding is None:
-            if hasattr(face, "normed_embedding") and face.normed_embedding is not None:
-                embedding = face.normed_embedding.tolist()
-            else:
-                embedding = [0.0] * 512
-
-        results.append(
-            DetectedFace(
-                bbox=[x1, y1, x2, y2],
-                det_score=float(face.det_score),
-                embedding=embedding,
-            )
-        )
-
-    return results
-

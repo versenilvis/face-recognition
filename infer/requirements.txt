@@ -3,4 +3,4 @@ onnxruntime
 opencv-python>=4.8.0,<5.0
 flask
 numpy
-albumentations
+faiss-cpu

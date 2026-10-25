@@ -4,8 +4,6 @@ services:
             context: ./infer
             dockerfile: Dockerfile
         restart: always
-        environment:
-            - TTA_MODE=fast
         volumes:
             - ./infer/models:/root/.insightface
             - ./infer/app.py:/app/app.py
