@@ -7,7 +7,7 @@
     <meta name="description" content="Đăng nhập hệ thống quản lý điểm danh khuôn mặt">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&family=Geist+Mono:wght@300;400;500&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <style type="text/tailwindcss">
         @import "tailwindcss";
@@ -64,56 +64,46 @@
         .toast.toast-info { border-color: rgba(157, 188, 255, 0.3); color: #9dbcff; }
     </style>
 </head>
-<body class="bg-[#04060a] text-zinc-100 min-h-screen antialiased flex flex-col justify-between items-center p-6 relative selection:bg-[#2a4690]/40 selection:text-[#9dbcff]">
+<body class="bg-[#04060a] text-zinc-100 min-h-screen antialiased flex flex-col justify-between items-center p-6 relative selection:bg-[#2a4690]/40 selection:text-[#9dbcff] overflow-x-hidden">
 
-    <!-- Subtle ambient glow -->
-    <div class="fixed inset-0 pointer-events-none overflow-hidden">
-        <div class="absolute top-[20%] left-1/2 -translate-x-1/2 w-[600px] h-[350px] bg-[radial-gradient(ellipse_at_center,rgba(42,70,144,0.12)_0%,transparent_70%)]"></div>
-    </div>
+    <!-- WebGL2 Gradient ASCII Background -->
+    <div id="ascii-background" class="fixed inset-0 z-0 overflow-hidden pointer-events-none"></div>
 
-    <!-- Top spacer for centering balance -->
-    <div class="w-full max-w-sm flex items-center justify-between text-xs text-zinc-400 relative z-10 pt-2">
+    <!-- Top bar for navigation -->
+    <div class="w-full max-w-[460px] flex items-center justify-between text-xs text-zinc-400 relative z-10 pt-2">
         <a href="/" class="inline-flex items-center gap-2 hover:text-white transition-colors duration-150">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="m15 18-6-6 6-6"/>
             </svg>
             <span>Quay lại camera</span>
         </a>
-        <div class="flex items-center gap-1.5">
-            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-            <span>Hệ thống sẵn sàng</span>
-        </div>
     </div>
 
     <!-- Minimalist Auth Card -->
-    <main class="w-full max-w-sm my-auto relative z-10">
-        <div class="bg-[#080b13] border border-white/[0.08] rounded-2xl p-7 sm:p-8 shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_20px_50px_rgba(0,0,0,0.6)]">
+    <main class="w-full max-w-[460px] my-auto relative z-10">
+        <div class="bg-[#080b13]/85 backdrop-blur-2xl border border-white/[0.1] rounded-3xl p-8 sm:p-10 shadow-[inset_0_1px_0_rgba(255,255,255,0.1),0_25px_60px_-15px_rgba(0,0,0,0.75)]">
             
-            <!-- Brand icon and title -->
-            <div class="mb-6">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#9dbcff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="mb-3">
-                    <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
-                    <circle cx="12" cy="12" r="3"/>
-                </svg>
-                <h1 class="text-xl font-bold tracking-tight text-white">
+            <!-- Title -->
+            <div class="mb-7">
+                <h1 class="text-2xl sm:text-[1.65rem] font-bold tracking-tight text-white">
                     Xác thực Giảng viên
                 </h1>
-                <p class="text-xs text-zinc-400 mt-1 font-normal leading-relaxed">
+                <p class="text-sm text-zinc-400 mt-1.5 font-normal leading-relaxed">
                     Nhập mã truy cập để đăng nhập hệ thống quản lý
                 </p>
             </div>
 
             <!-- Form -->
             <form id="login-form">
-                <div class="mb-4">
-                    <label for="login-code" class="block text-xs font-medium text-zinc-300 mb-1.5">
+                <div class="mb-5">
+                    <label for="login-code" class="block text-xs font-medium text-zinc-300 mb-2">
                         Mã truy cập
                     </label>
                     <div class="relative">
                         <input 
                             type="password" 
                             id="login-code" 
-                            class="w-full pl-3.5 pr-10 py-2.5 bg-white/[0.03] hover:bg-white/[0.05] focus:bg-[#0b0f1a] border border-white/[0.1] focus:border-[#4b72db] focus:ring-1 focus:ring-[#4b72db] rounded-xl text-white text-sm placeholder:text-zinc-600 outline-none transition duration-150 font-sans" 
+                            class="w-full pl-4 pr-11 py-3 bg-white/[0.04] hover:bg-white/[0.06] focus:bg-[#0b0f1a] border border-white/[0.12] focus:border-[#4b72db] focus:ring-1 focus:ring-[#4b72db] rounded-xl text-white text-base placeholder:text-zinc-600 outline-none transition duration-150 font-sans" 
                             placeholder="Nhập mã (mặc định: gv123)" 
                             required 
                             autofocus
@@ -122,11 +112,11 @@
                         <button 
                             type="button" 
                             id="btn-toggle-code" 
-                            class="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-white transition-colors duration-150 cursor-pointer p-1"
+                            class="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-white transition-colors duration-150 cursor-pointer p-1"
                             title="Hiện hoặc ẩn mã"
                             tabindex="-1"
                         >
-                            <svg id="eye-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <svg id="eye-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                 <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/>
                                 <circle cx="12" cy="12" r="3"/>
                             </svg>
@@ -134,8 +124,8 @@
                     </div>
                 </div>
 
-                <!-- Clean error text without box container -->
-                <div id="login-error" class="hidden mb-3.5 flex items-center gap-1.5 text-rose-300 text-xs font-medium">
+                <!-- Error text -->
+                <div id="login-error" class="hidden mb-4 flex items-center gap-1.5 text-rose-300 text-xs font-medium">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="shrink-0 text-rose-400">
                         <circle cx="12" cy="12" r="10"/>
                         <line x1="12" y1="8" x2="12" y2="12"/>
@@ -147,32 +137,53 @@
                 <button 
                     type="submit" 
                     id="btn-submit" 
-                    class="w-full py-2.5 px-4 bg-gradient-to-b from-[#284894] to-[#1c336b] hover:from-[#3055ae] hover:to-[#223e80] active:scale-[0.98] border border-[#4b72db]/40 rounded-xl text-xs sm:text-sm font-semibold text-white shadow-[0_2px_8px_rgba(0,0,0,0.35),inset_0_1px_0_rgba(255,255,255,0.18)] flex items-center justify-center gap-2 transition duration-150 cursor-pointer"
+                    class="w-full py-3 px-5 bg-gradient-to-b from-[#284894] to-[#1c336b] hover:from-[#3055ae] hover:to-[#223e80] active:scale-[0.98] border border-[#4b72db]/40 rounded-xl text-sm font-semibold text-white shadow-[0_2px_10px_rgba(0,0,0,0.35),inset_0_1px_0_rgba(255,255,255,0.2)] flex items-center justify-center gap-2 transition duration-150 cursor-pointer"
                 >
                     <span>Đăng nhập</span>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M5 12h14"/>
                         <path d="m12 5 7 7-7 7"/>
                     </svg>
                 </button>
             </form>
 
-            <div class="mt-4 pt-4 border-t border-white/[0.05] text-center">
+            <div class="mt-5 pt-4 border-t border-white/[0.06] text-center">
                 <span class="text-xs text-zinc-400">Mã mặc định: <span class="font-mono text-zinc-300">gv123</span></span>
             </div>
 
         </div>
     </main>
 
-    <!-- Bottom copyright -->
-    <footer class="w-full max-w-sm text-center text-xs text-zinc-400 relative z-10 pb-2">
-        Face Attendance Management
-    </footer>
+    <!-- Bottom spacer for vertical balance -->
+    <div class="w-full max-w-[460px] h-4 relative z-10"></div>
 
     <div class="toast-container" id="toast-container"></div>
 
     <script src="/js/api.js?v=4.0"></script>
+    <script src="/js/gradient-ascii.js?v=1.0"></script>
     <script>
+        // initialize webgl ascii background
+        const bgContainer = document.getElementById('ascii-background');
+        if (bgContainer && window.initGradientASCII) {
+            initGradientASCII(bgContainer, {
+                colors: ['#1e3fd8', '#f6f8ff', '#a5d8ff', '#38bdf8'],
+                shape: 'horizon',
+                characters: ' =+xX0S8#@',
+                cellSize: 18,
+                density: 0.8,
+                glyphOpacity: 0.85,
+                glow: 0.25,
+                softness: 0.5,
+                scale: 1,
+                flow: 0.5,
+                speed: 1,
+                gradientOpacity: 0.9,
+                grain: 0.08,
+                clickEffect: 'wave',
+                fontFamily: '"Geist Mono", monospace'
+            });
+        }
+
         const form = document.getElementById('login-form');
         const codeInput = document.getElementById('login-code');
         const errorEl = document.getElementById('login-error');
@@ -212,7 +223,7 @@
                 }
                 errorEl.classList.remove('hidden');
                 submitBtn.disabled = false;
-                submitBtn.innerHTML = '<span>Đăng nhập</span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg>';
+                submitBtn.innerHTML = '<span>Đăng nhập</span><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg>';
             }
         });
     </script>
