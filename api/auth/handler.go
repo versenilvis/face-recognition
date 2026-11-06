@@ -36,7 +36,7 @@ func (h *Handler) Login(c fiber.Ctx) error {
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-				"error": "invalid login code",
+				"error": "Sai mã truy cập",
 			})
 		}
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "db error"})
