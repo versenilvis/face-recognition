@@ -1105,35 +1105,39 @@
     </div>
 
     <!-- Modal: Sổ Điểm danh Chi tiết -->
-    <div id="modal-attendance" class="modal-backdrop fixed inset-0 bg-black/80 backdrop-blur-md items-center justify-center z-50 p-4">
-        <div class="bg-[#0a0d16] rounded-[24px] w-full max-w-[760px] p-6 shadow-2xl">
-            <div class="flex items-center justify-between mb-3 pb-2.5">
+    <div id="modal-attendance" class="modal-backdrop fixed inset-0 bg-black/80 backdrop-blur-md items-center justify-center z-50 p-4 sm:p-6">
+        <div class="bg-[#0a0d16] border border-white/[0.1] rounded-[24px] w-full max-w-4xl xl:max-w-5xl p-6 shadow-[0_24px_60px_rgba(0,0,0,0.85)] flex flex-col max-h-[85vh]">
+            <div class="flex items-center justify-between mb-4 pb-3 border-b border-white/[0.08] shrink-0">
                 <div>
-                    <h3 class="text-sm font-semibold text-white tracking-tight" id="att-modal-title">Sổ Điểm danh</h3>
-                    <p class="text-xs text-zinc-400">Trạng thái điểm danh sinh viên trong buổi học</p>
+                    <div class="flex items-center gap-3">
+                        <h3 class="text-base font-bold text-white tracking-tight" id="att-modal-title">Sổ Điểm danh</h3>
+                        <div id="att-modal-stats" class="flex items-center gap-2"></div>
+                    </div>
+                    <p class="text-xs text-zinc-400 mt-0.5">Trạng thái điểm danh sinh viên trong buổi học</p>
                 </div>
-                <div class="flex items-center gap-2">
-                    <a id="btn-export-csv" href="#" class="btn btn-success btn-sm" download>
-                        Xuất file CSV
+                <div class="flex items-center gap-2.5">
+                    <a id="btn-export-csv" href="#" class="btn btn-success btn-sm font-medium inline-flex items-center gap-1.5 px-3" download>
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                        <span>Xuất file CSV</span>
                     </a>
-                    <button class="text-zinc-500 hover:text-white text-lg leading-none cursor-pointer" onclick="dashboard.closeModal('modal-attendance')">&times;</button>
+                    <button class="text-zinc-400 hover:text-white text-xl leading-none cursor-pointer w-8 h-8 rounded-lg flex items-center justify-center hover:bg-white/10 transition" onclick="dashboard.closeModal('modal-attendance')">&times;</button>
                 </div>
             </div>
 
-            <div class="max-h-[380px] overflow-y-auto rounded-xl bg-white/[0.02] border border-white/[0.08]">
-                <table class="w-full text-left text-sm text-zinc-200">
-                    <thead>
-                        <tr class="bg-white/[0.04] text-zinc-400">
-                            <th class="p-2.5 w-28 whitespace-nowrap">MSSV</th>
-                            <th class="p-2.5 min-w-[160px]">Họ và Tên</th>
-                            <th class="p-2.5 w-28 whitespace-nowrap">Trạng thái</th>
-                            <th class="p-2.5 w-28 whitespace-nowrap">Thời gian</th>
-                            <th class="p-2.5 w-32 whitespace-nowrap">Độ khớp</th>
-                            <th class="p-2.5 w-40 text-right whitespace-nowrap">Thao tác</th>
+            <div class="overflow-y-auto rounded-xl bg-white/[0.015] border border-white/[0.08] flex-1 min-h-[320px]">
+                <table class="w-full text-left text-sm text-zinc-200 border-collapse">
+                    <thead class="sticky top-0 bg-[#0c101d] z-10 border-b border-white/[0.08]">
+                        <tr class="text-zinc-400">
+                            <th class="px-4 py-3 w-[120px] whitespace-nowrap">MSSV</th>
+                            <th class="px-4 py-3 min-w-[180px]">Họ và Tên</th>
+                            <th class="px-4 py-3 w-[130px] whitespace-nowrap">Trạng thái</th>
+                            <th class="px-4 py-3 w-[170px] whitespace-nowrap">Thời gian</th>
+                            <th class="px-4 py-3 w-[160px] whitespace-nowrap">Độ khớp</th>
+                            <th class="px-4 py-3 w-[150px] text-right whitespace-nowrap">Thao tác</th>
                         </tr>
                     </thead>
-                    <tbody id="attendance-tbody">
-                        <tr><td colspan="6" class="p-6 text-center text-zinc-500 text-xs font-normal">Đang tải dữ liệu...</td></tr>
+                    <tbody id="attendance-tbody" class="divide-y divide-white/[0.04]">
+                        <tr><td colspan="6" class="p-8 text-center text-zinc-500 text-xs font-normal">Đang tải dữ liệu...</td></tr>
                     </tbody>
                 </table>
             </div>

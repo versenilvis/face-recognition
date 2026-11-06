@@ -790,8 +790,21 @@ class DashboardController {
         try {
             const records = await API.listAttendance(lessonId);
             if (!records || records.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color: var(--text-dim); padding: 24px 0;">Chưa có sinh viên trong danh sách</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color: var(--text-dim); padding: 32px 0;">Chưa có sinh viên trong danh sách</td></tr>';
+                const statsEl = document.getElementById('att-modal-stats');
+                if (statsEl) statsEl.innerHTML = '';
                 return;
+            }
+
+            const presentCount = records.filter((r) => r.trang_thai === 'present').length;
+            const totalCount = records.length;
+            const rate = totalCount > 0 ? Math.round((presentCount / totalCount) * 100) : 0;
+            const statsEl = document.getElementById('att-modal-stats');
+            if (statsEl) {
+                statsEl.innerHTML = `
+                    <span class="badge badge-success inline-flex items-center gap-1.5"><span class="badge-dot"></span>${presentCount}/${totalCount} có mặt</span>
+                    <span class="text-xs font-semibold text-zinc-400">(${rate}%)</span>
+                `;
             }
 
             tbody.innerHTML = records
@@ -801,19 +814,22 @@ class DashboardController {
                     const method = r.phuong_thuc === 'face' ? 'Webcam AI' : (r.phuong_thuc === 'manual' ? 'Thủ công' : '-');
 
                     return `
-                    <tr>
-                        <td style="font-family: var(--font-mono); font-weight:700; white-space: nowrap;">${r.mssv}</td>
-                        <td style="font-weight:600;">${r.ho_ten}</td>
-                        <td style="white-space: nowrap;">
+                    <tr class="hover:bg-white/[0.03] transition-colors">
+                        <td style="font-family: var(--font-mono); font-weight:700; white-space: nowrap;" class="px-4 py-3 text-zinc-200">${r.mssv}</td>
+                        <td style="font-weight:600;" class="px-4 py-3 text-white">${r.ho_ten}</td>
+                        <td class="px-4 py-3" style="white-space: nowrap;">
                             ${
                                 isPresent
-                                    ? `<span class="badge badge-success" style="white-space: nowrap; flex-shrink: 0;"><span class="badge-dot"></span>Có mặt</span>`
-                                    : `<span class="badge badge-danger" style="white-space: nowrap; flex-shrink: 0;"><span class="badge-dot"></span>Vắng</span>`
+                                    ? `<span class="badge badge-success inline-flex items-center gap-1.5" style="white-space: nowrap; flex-shrink: 0;"><span class="badge-dot"></span>Có mặt</span>`
+                                    : `<span class="badge badge-danger inline-flex items-center gap-1.5" style="white-space: nowrap; flex-shrink: 0;"><span class="badge-dot"></span>Vắng</span>`
                             }
                         </td>
-                        <td style="font-family: var(--font-mono); font-size: 0.8rem; color: var(--text-muted); white-space: nowrap;">${r.thoi_gian || '-'}</td>
-                        <td style="font-family: var(--font-mono); font-size: 0.8rem; white-space: nowrap;">${simScore} (${method})</td>
-                        <td style="text-align: right; white-space: nowrap;">
+                        <td style="font-family: var(--font-mono); font-size: 0.8125rem; color: var(--text-muted); white-space: nowrap;" class="px-4 py-3">${r.thoi_gian || '-'}</td>
+                        <td style="font-family: var(--font-mono); font-size: 0.8125rem; white-space: nowrap;" class="px-4 py-3">
+                            <span style="font-weight: 600; color: ${r.similarity ? 'var(--accent-emerald)' : 'var(--text-muted)'};">${simScore}</span>
+                            <span style="color: var(--text-muted); font-size: 0.75rem; margin-left: 4px;">(${method})</span>
+                        </td>
+                        <td style="text-align: right; white-space: nowrap;" class="px-4 py-3">
                             ${
                                 isPresent
                                     ? `<button class="btn btn-danger btn-sm" onclick="dashboard.manualCancel(${r.sinh_vien_id})" style="white-space: nowrap;">Hủy có mặt</button>`
