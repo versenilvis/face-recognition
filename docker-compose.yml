@@ -4,6 +4,8 @@ services:
             context: ./infer
             dockerfile: Dockerfile
         restart: always
+        env_file:
+            - .env
         volumes:
             - ./infer/models:/root/.insightface
             - ./infer/app.py:/app/app.py

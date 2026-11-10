@@ -95,14 +95,18 @@ func (r *Repo) GetGlobalRosterWithEmbeddings(ctx context.Context) ([]RosterStude
 func (r *Repo) SaveFaceEmbedding(ctx context.Context, svID int, embeddingJSON string) error {
 	_, err := r.db.Write.ExecContext(ctx, `
 		insert into face_embedding (sinh_vien_id, embedding, registered_at)
-		values (?, ?, CURRENT_TIMESTAMP)
+		select id, ?, CURRENT_TIMESTAMP from sinh_vien where mssv = (select mssv from sinh_vien where id = ?)
 		on conflict (sinh_vien_id) do update set embedding = excluded.embedding, registered_at = CURRENT_TIMESTAMP
-	`, svID, embeddingJSON)
+	`, embeddingJSON, svID)
 	return err
 }
 
 func (r *Repo) DeleteFaceEmbedding(ctx context.Context, svID int) (int64, error) {
-	res, err := r.db.Write.ExecContext(ctx, "delete from face_embedding where sinh_vien_id = ?", svID)
+	res, err := r.db.Write.ExecContext(ctx, `
+		delete from face_embedding where sinh_vien_id in (
+			select id from sinh_vien where mssv = (select mssv from sinh_vien where id = ?)
+		)
+	`, svID)
 	if err != nil {
 		return 0, err
 	}

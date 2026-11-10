@@ -213,7 +213,7 @@ class DashboardController {
     async loadAllStudents() {
         const tbody = document.getElementById('all-students-tbody');
         if (tbody) {
-            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color: var(--text-dim); padding: 32px 0;">Đang tải danh sách sinh viên...</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color: var(--text-dim); padding: 32px 0;">Đang tải danh sách sinh viên...</td></tr>';
         }
         try {
             this.allStudents = await API.listAllStudents() || [];
@@ -221,7 +221,7 @@ class DashboardController {
         } catch (err) {
             console.error('loadAllStudents error:', err);
             if (tbody) {
-                tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color: var(--accent-rose); padding: 32px 0;">Lỗi tải dữ liệu: ${err.message || 'Lỗi server'}</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color: var(--accent-rose); padding: 32px 0;">Lỗi tải dữ liệu: ${err.message || 'Lỗi server'}</td></tr>`;
             }
         }
     }
@@ -237,7 +237,7 @@ class DashboardController {
         }
 
         if (list.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color: var(--text-dim); padding: 32px 0;">Chưa có sinh viên nào phù hợp</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color: var(--text-dim); padding: 32px 0;">Chưa có sinh viên nào phù hợp</td></tr>';
             return;
         }
 
@@ -258,14 +258,29 @@ class DashboardController {
 
                 const safeName = (s.ho_ten || '').replace(/'/g, "\\'");
                 const faceBadge = s.has_face
-                    ? `<div style="display:inline-flex; align-items:center; gap:8px; white-space:nowrap; flex-shrink:0;">
-                        <span class="badge badge-success" style="white-space:nowrap; flex-shrink:0;"><span class="badge-dot"></span>Đã có khuôn mặt</span>
-                        <button class="btn btn-secondary btn-sm" onclick="dashboard.viewFaceModal('${safeName}', '${s.mssv}')">
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="10" r="3"></circle><path d="M7 20.662V19a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v1.662"></path></svg>
-                            <span>Xem ảnh</span>
-                        </button>
-                    </div>`
+                    ? '<span class="badge badge-success" style="white-space:nowrap; flex-shrink:0;"><span class="badge-dot"></span>Đã có khuôn mặt</span>'
                     : '<span class="badge badge-neutral" style="white-space:nowrap; flex-shrink:0;"><span class="badge-dot"></span>Chưa đăng ký</span>';
+
+                const actionBtns = `
+                    <div class="row-actions" style="display:inline-flex; align-items:center; justify-content: flex-end; gap:6px; white-space:nowrap; flex-shrink:0;">
+                        ${
+                            s.has_face
+                                ? `<button class="btn btn-secondary btn-sm" onclick="dashboard.viewFaceModal('${safeName}', '${s.mssv}')" style="white-space: nowrap;">Xem ảnh</button>`
+                                : ''
+                        }
+                        <button class="btn ${s.has_face ? 'btn-secondary' : 'btn-primary'} btn-sm" onclick="dashboard.openFaceModal(${s.id}, '${safeName}', '${s.mssv}')" style="white-space: nowrap;">
+                            ${s.has_face ? 'Chụp lại' : 'Chụp mặt'}
+                        </button>
+                        <button class="btn btn-secondary btn-sm" onclick="dashboard.triggerUploadFace(${s.id}, '${safeName}', '${s.mssv}')" style="white-space: nowrap;" title="Tải ảnh chân dung từ máy tính">
+                            Tải ảnh
+                        </button>
+                        ${
+                            s.has_face
+                                ? `<button class="btn btn-secondary btn-sm" onclick="dashboard.deleteFace(${s.id})" style="white-space: nowrap;">Xóa mặt</button>`
+                                : ''
+                        }
+                    </div>
+                `;
 
                 return `
                 <tr>
@@ -273,6 +288,7 @@ class DashboardController {
                     <td style="font-weight:700; color:#fff;">${s.ho_ten}</td>
                     <td>${classBadges}</td>
                     <td style="white-space: nowrap;">${faceBadge}</td>
+                    <td style="text-align: right; white-space: nowrap;">${actionBtns}</td>
                 </tr>
                 `;
             })
@@ -951,6 +967,9 @@ class DashboardController {
                             <button class="btn ${s.has_face ? 'btn-secondary' : 'btn-primary'} btn-sm" onclick="dashboard.openFaceModal(${s.id}, '${safeName}', '${s.mssv}')" style="white-space: nowrap;">
                                 ${s.has_face ? 'Chụp lại' : 'Chụp mặt'}
                             </button>
+                            <button class="btn btn-secondary btn-sm" onclick="dashboard.triggerUploadFace(${s.id}, '${safeName}', '${s.mssv}')" style="white-space: nowrap;" title="Tải ảnh chân dung từ máy tính">
+                                Tải ảnh
+                            </button>
                             ${
                                 s.has_face
                                     ? `<button class="btn btn-secondary btn-sm" onclick="dashboard.deleteFace(${s.id})" style="white-space: nowrap;">Xóa mặt</button>`
@@ -1004,6 +1023,9 @@ class DashboardController {
             if (this.currentClass) {
                 await this.loadStudents(this.currentClass.id);
             }
+            if (this.allStudents) {
+                await this.loadAllStudents();
+            }
             this.updateOverviewStats();
         } catch (err) {
             showToast(err.message, 'error');
@@ -1011,7 +1033,7 @@ class DashboardController {
     }
 
     async deleteFace(id) {
-        const sv = (this.students || []).find((item) => item.id === id);
+        const sv = (this.students || []).find((item) => item.id === id) || (this.allStudents || []).find((item) => item.id === id);
         const svName = sv ? `${sv.ho_ten} (${sv.mssv})` : `Sinh viên #${id}`;
         const ok = await showConfirm({
             title: 'Xóa dữ liệu khuôn mặt',
@@ -1027,6 +1049,9 @@ class DashboardController {
             showToast('Đã xóa dữ liệu khuôn mặt', 'success');
             if (this.currentClass) {
                 await this.loadStudents(this.currentClass.id);
+            }
+            if (this.allStudents) {
+                await this.loadAllStudents();
             }
             this.updateOverviewStats();
         } catch (err) {
@@ -1211,6 +1236,38 @@ class DashboardController {
         }
     }
 
+    triggerUploadFace(svId, name, mssv) {
+        let input = document.getElementById('global-fast-upload-input');
+        if (!input) {
+            input = document.createElement('input');
+            input.id = 'global-fast-upload-input';
+            input.type = 'file';
+            input.accept = 'image/*';
+            input.style.display = 'none';
+            document.body.appendChild(input);
+        }
+        input.onchange = async () => {
+            if (!input.files || !input.files[0]) return;
+            const file = input.files[0];
+            input.value = '';
+            showToast(`Đang phân tích khuôn mặt cho ${name}...`, 'info');
+            try {
+                await API.registerFace(svId, file, true);
+                showToast(`Đã cập nhật khuôn mặt thành công cho ${name} (${mssv})!`, 'success');
+                if (this.currentClass) {
+                    await this.loadStudents(this.currentClass.id);
+                }
+                if (this.allStudents) {
+                    await this.loadAllStudents();
+                }
+                this.updateOverviewStats();
+            } catch (err) {
+                showToast(err.message || 'Lỗi cập nhật khuôn mặt', 'error');
+            }
+        };
+        input.click();
+    }
+
     // ==========================================
     // Webcam Face Registration Modal
     // ==========================================
@@ -1271,6 +1328,9 @@ class DashboardController {
             this.closeFaceModal();
             if (this.currentClass) {
                 await this.loadStudents(this.currentClass.id);
+            }
+            if (this.allStudents) {
+                await this.loadAllStudents();
             }
             this.updateOverviewStats();
         } catch (err) {

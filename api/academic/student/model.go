@@ -19,6 +19,7 @@ type StudentLookup struct {
 }
 
 type GlobalStudent struct {
+	ID         int      `json:"id"`
 	MSSV       string   `json:"mssv"`
 	HoTen      string   `json:"ho_ten"`
 	HasFace    bool     `json:"has_face"`

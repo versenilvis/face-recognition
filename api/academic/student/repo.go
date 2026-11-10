@@ -151,7 +151,7 @@ func (r *Repo) LookupByMSSV(ctx context.Context, mssv string) (*StudentLookup, e
 
 func (r *Repo) ListAllUniqueStudents(ctx context.Context) ([]GlobalStudent, error) {
 	rows, err := r.db.Read.QueryContext(ctx, `
-		select sv.mssv, sv.ho_ten, sv.lop_hoc_id, coalesce(l.ten, ''),
+		select sv.id, sv.mssv, sv.ho_ten, sv.lop_hoc_id, coalesce(l.ten, ''),
 		       case when fe.sinh_vien_id is not null then 1 else 0 end
 		from sinh_vien sv
 		left join lop_hoc l on sv.lop_hoc_id = l.id
@@ -167,15 +167,17 @@ func (r *Repo) ListAllUniqueStudents(ctx context.Context) ([]GlobalStudent, erro
 	order := []string{}
 
 	for rows.Next() {
+		var svID int
 		var mssv, hoTen, className string
 		var classID, hasFaceInt int
-		if err := rows.Scan(&mssv, &hoTen, &classID, &className, &hasFaceInt); err != nil {
+		if err := rows.Scan(&svID, &mssv, &hoTen, &classID, &className, &hasFaceInt); err != nil {
 			return nil, err
 		}
 
 		item, ok := studentMap[mssv]
 		if !ok {
 			item = &GlobalStudent{
+				ID:         svID,
 				MSSV:       mssv,
 				HoTen:      hoTen,
 				HasFace:    false,
@@ -187,6 +189,7 @@ func (r *Repo) ListAllUniqueStudents(ctx context.Context) ([]GlobalStudent, erro
 		}
 		if hasFaceInt == 1 {
 			item.HasFace = true
+			item.ID = svID
 		}
 		if className != "" {
 			item.ClassNames = append(item.ClassNames, className)

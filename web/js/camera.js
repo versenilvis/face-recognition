@@ -1893,11 +1893,15 @@ class CameraController {
                     tf.lastSeen = now;
                     tf.lossCount = 0;
                     tf.opacity = 1.0;
+                    if (m.similarity && m.similarity > (tf.maxSimilarity || 0)) {
+                        tf.maxSimilarity = m.similarity;
+                    }
                 } else {
                     tf = {
                         name: cleanName,
                         mssv: cleanMssv,
                         similarity: m.similarity || 0,
+                        maxSimilarity: m.similarity || 0,
                         status: m.status,
                         isCached: false,
                         isVerified: false,
@@ -1994,6 +1998,7 @@ class CameraController {
             tf.name = bestCandidate.name;
             tf.mssv = bestCandidate.mssv;
             tf.similarity = bestCandidate.maxSim;
+            tf.maxSimilarity = Math.max(tf.maxSimilarity || 0, bestCandidate.maxSim || 0, m.similarity || 0);
             tf.status = isWinnerNew ? 'new' : (tf.status === 'new' ? 'new' : bestCandidate.status);
             tf.isCached = true;
             tf.isVerified = true;
@@ -2012,7 +2017,7 @@ class CameraController {
                 if (target) {
                     target.trang_thai = 'present';
                     target.thoi_gian = timeStr;
-                    target.similarity = bestCandidate.maxSim;
+                    target.similarity = tf.maxSimilarity || bestCandidate.maxSim;
                 }
                 this.renderLiveFeed();
             } else if (bestCandidate.status === 'already' && isManual) {
@@ -2037,6 +2042,9 @@ class CameraController {
             tf.name = 'Chưa đăng ký';
             tf.mssv = '';
             tf.similarity = m.similarity || 0;
+            if (m.similarity && m.similarity > (tf.maxSimilarity || 0)) {
+                tf.maxSimilarity = m.similarity;
+            }
             tf.status = 'unknown';
             tf.isCached = false;
             tf.isVerified = false;
@@ -2117,15 +2125,19 @@ class CameraController {
         this.ctx.stroke();
 
         if (this.showLabels) {
+            const bestSim = face.maxSimilarity || face.similarity || 0;
+            const simPercent = Math.round(bestSim * 100);
+            const simBadge = simPercent > 0 ? ` · ${simPercent}%` : '';
+
             let labelText = '';
             if (face.status === 'other_class') {
-                labelText = face.name ? (face.mssv ? `${face.name} (${face.mssv}) · Khác lớp` : `${face.name} · Khác lớp`) : 'Khác lớp';
+                labelText = face.name ? (face.mssv ? `${face.name} (${face.mssv}) · Khác lớp${simBadge}` : `${face.name} · Khác lớp${simBadge}`) : `Khác lớp${simBadge}`;
             } else if (face.status === 'fake') {
                 labelText = 'Cảnh báo giả mạo';
             } else if (face.name && face.name !== 'Chưa đăng ký') {
-                labelText = face.mssv ? `${face.name} (${face.mssv})` : face.name;
+                labelText = face.mssv ? `${face.name} (${face.mssv})${simBadge}` : `${face.name}${simBadge}`;
             } else {
-                labelText = 'Chưa đăng ký';
+                labelText = simPercent > 0 ? `Chưa đăng ký · ${simPercent}%` : 'Chưa đăng ký';
             }
 
             this.ctx.font = '600 13px "Poppins", sans-serif';
@@ -2267,10 +2279,11 @@ class CameraController {
             .map((s) => {
                 const isPresent = s.trang_thai === 'present';
                 const studentId = s.sinh_vien_id || s.id;
+                const safeName = (s.ho_ten || '').replace(/'/g, "\\'");
 
                 return `
-                <div class="live-item ${isPresent ? 'is-present' : 'is-absent'}">
-                    <div class="flex items-center gap-2.5 min-w-0 flex-1">
+                <div class="live-item ${isPresent ? 'is-present' : 'is-absent'} group flex items-center justify-between p-1.5 rounded-xl bg-white/[0.02] hover:bg-white/[0.05] border border-white/[0.04] transition gap-1.5">
+                    <div class="flex items-center gap-2 min-w-0 flex-1">
                         ${
                             isPresent
                                 ? `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="shrink-0 text-emerald-400"><polyline points="20 6 9 17 4 12"></polyline></svg>`
@@ -2281,17 +2294,23 @@ class CameraController {
                             <div class="text-[11px] font-normal text-zinc-400 leading-tight tabular-nums mt-0.5">${s.mssv}</div>
                         </div>
                     </div>
-                    <div class="flex items-center gap-1.5 shrink-0">
+                    <div class="flex items-center gap-1 shrink-0">
+                        <button class="w-6 h-6 rounded-md bg-white/[0.04] hover:bg-[#2a4690] text-zinc-300 hover:text-white flex items-center justify-center transition cursor-pointer" onclick="cameraCtrl.quickCaptureFaceForStudent(${studentId}, '${safeName}', '${s.mssv}')" title="Chụp lại khuôn mặt từ camera ngay bây giờ">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+                        </button>
+                        <button class="w-6 h-6 rounded-md bg-white/[0.04] hover:bg-[#2a4690] text-zinc-300 hover:text-white flex items-center justify-center transition cursor-pointer" onclick="cameraCtrl.quickUploadFaceForStudent(${studentId}, '${safeName}', '${s.mssv}')" title="Tải ảnh chân dung từ máy tính">
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                        </button>
                         ${
                             isPresent
                                 ? `
-                            <button class="w-5 h-5 rounded-full bg-rose-500/10 hover:bg-rose-500/25 text-rose-300 flex items-center justify-center text-xs transition cursor-pointer" onclick="cameraCtrl.toggleManualAttendance(${studentId}, false)" title="Hủy điểm danh">
+                            <button class="w-6 h-6 rounded-md bg-rose-500/10 hover:bg-rose-500/25 text-rose-300 flex items-center justify-center text-xs transition cursor-pointer ml-0.5" onclick="cameraCtrl.toggleManualAttendance(${studentId}, false)" title="Hủy điểm danh">
                                 &times;
                             </button>
                         `
                                 : `
-                            <button class="px-2.5 py-1 rounded-lg bg-white/[0.04] hover:bg-[#2a4690] border border-white/[0.08] text-zinc-300 hover:text-white text-[10px] font-semibold transition cursor-pointer" onclick="cameraCtrl.toggleManualAttendance(${studentId}, true)" title="Điểm danh thủ công">
-                                + Có mặt
+                            <button class="px-2 py-0.5 rounded-md bg-white/[0.04] hover:bg-[#2a4690] border border-white/[0.08] text-zinc-300 hover:text-white text-[10px] font-semibold transition cursor-pointer ml-0.5" onclick="cameraCtrl.toggleManualAttendance(${studentId}, true)" title="Điểm danh thủ công">
+                                Có mặt
                             </button>
                         `
                         }
@@ -2302,6 +2321,62 @@ class CameraController {
             .join('');
 
         this.liveListEl.innerHTML = otherHtml + rosterHtml;
+    }
+
+    enableReCaptureInDrawer() {
+        const confirmBox = document.getElementById('face-exists-confirm');
+        const captureForm = document.getElementById('face-capture-form');
+        if (confirmBox) confirmBox.style.display = 'none';
+        if (captureForm) captureForm.style.display = 'flex';
+        this.startMiniCameraStream();
+    }
+
+    async quickCaptureFaceForStudent(studentId, name, mssv) {
+        if (!this.video || this.video.readyState < 2) {
+            showToast('Camera chưa sẵn sàng, vui lòng đợi trong giây lát', 'warning');
+            return;
+        }
+        showToast(`Đang chụp khung hình camera cho ${name}...`, 'info');
+        try {
+            const blob = await this.grabFrameBlob();
+            if (!blob) {
+                showToast('Không lấy được khung hình từ camera', 'error');
+                return;
+            }
+            await API.registerFace(studentId, blob, true);
+            showToast(`Đã lưu khuôn mặt thành công cho ${name} (${mssv})!`, 'success');
+            await this.syncAttendanceList();
+            this.resetFaceCache(false);
+        } catch (err) {
+            showToast(err.message || 'Lỗi lưu khuôn mặt từ camera', 'error');
+        }
+    }
+
+    quickUploadFaceForStudent(studentId, name, mssv) {
+        let input = document.getElementById('camera-quick-upload-input');
+        if (!input) {
+            input = document.createElement('input');
+            input.id = 'camera-quick-upload-input';
+            input.type = 'file';
+            input.accept = 'image/*';
+            input.style.display = 'none';
+            document.body.appendChild(input);
+        }
+        input.onchange = async () => {
+            if (!input.files || !input.files[0]) return;
+            const file = input.files[0];
+            input.value = '';
+            showToast(`Đang tải ảnh và phân tích khuôn mặt cho ${name}...`, 'info');
+            try {
+                await API.registerFace(studentId, file, true);
+                showToast(`Đã cập nhật khuôn mặt thành công cho ${name} (${mssv})!`, 'success');
+                await this.syncAttendanceList();
+                this.resetFaceCache(false);
+            } catch (err) {
+                showToast(err.message || 'Lỗi tải ảnh khuôn mặt', 'error');
+            }
+        };
+        input.click();
     }
 
     async toggleManualAttendance(svId, markPresent) {

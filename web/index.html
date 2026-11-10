@@ -742,9 +742,15 @@
                     <div id="wizard-step-2" class="flex flex-col flex-1" style="display: none;">
                         <!-- Case A: Student has face -->
                         <div id="face-exists-confirm" style="display: none;">
-                            <div class="p-3 bg-emerald-500/10 rounded-xl mb-4">
+                            <div class="p-3 bg-emerald-500/10 rounded-xl mb-3">
                                 <p class="font-semibold text-xs text-white mb-1">Sinh viên đã có khuôn mặt đăng ký</p>
-                                <p class="text-[11px] text-zinc-400 leading-relaxed">Khuôn mặt sẽ được tái sử dụng từ lớp trước, không cần chụp lại.</p>
+                                <p class="text-[11px] text-zinc-400 leading-relaxed">Khuôn mặt sẽ được tái sử dụng từ lớp trước.</p>
+                            </div>
+                            <div class="mb-4">
+                                <button type="button" class="btn btn-secondary w-full text-xs py-1.5 flex items-center justify-center gap-1.5 cursor-pointer" onclick="cameraCtrl.enableReCaptureInDrawer()">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="10" r="3"></circle></svg>
+                                    <span>Chụp lại hoặc Tải ảnh mới</span>
+                                </button>
                             </div>
                             <div class="mt-auto pt-3 flex gap-2">
                                 <button type="button" id="btn-back-step1" class="btn btn-secondary flex-1 rounded-lg text-xs font-medium cursor-pointer">Quay lại</button>
